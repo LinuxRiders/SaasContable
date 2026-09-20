@@ -1,13 +1,28 @@
-# SaasContable
+# SaasContable - Prototipo / MVP
 
-Repositorio oficial del sistema SaaS Contable.
+Este proyecto corresponde al desarrollo rápido y prototipo (MVP) del sistema contable, enfocado en validar flujos de usuario, diseño de interfaz y conceptos clave de la lógica contable (Compras, Ventas, Tesorería, Bancos, Conciliación, Libros Contables y Plan Contable).
 
-> ℹ️ El desarrollo rápido y prototipo (MVP) para evaluación técnica, pruebas y aclaración de dudas se encuentra en la rama **[`prototipo`](https://github.com/LinuxRiders/SaasContable/tree/prototipo)**.
+> ⚠️ **Nota:** Esta rama (`mvp` / `prototipo`) contiene el prototipo funcional preliminar. No representa la versión oficial de producción.
 
-Para revisar y ejecutar el prototipo funcional:
-```bash
-git fetch origin
-git checkout prototipo
-npm install
-npm run dev
-```
+## Tecnologías utilizadas
+- **React 18** + **Vite**
+- **Lucide React** (iconografía)
+- **Context API** (`AccountingContext`) para gestión de estado y datos mockeados
+
+## Instalación y ejecución local
+
+1. Clonar el repositorio y ubicarse en esta rama:
+   ```bash
+   git clone -b prototipo https://github.com/LinuxRiders/SaasContable.git
+   cd SaasContable
+   ```
+
+2. Instalar dependencias:
+   ```bash
+   npm install
+   ```
+
+3. Iniciar el entorno de desarrollo:
+   ```bash
+   npm run dev
+   ```
