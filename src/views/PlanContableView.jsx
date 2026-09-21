@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAccounting } from '../context/AccountingContext';
+import { parseExcelPlanContable } from '../utils/excelParser';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { 
@@ -17,12 +18,47 @@ import {
 } from 'lucide-react';
 
 export const PlanContableView = () => {
-  const { planContable, agregarCuenta, modificarCuenta, eliminarCuenta } = useAccounting();
+  const { planContable, agregarCuenta, modificarCuenta, eliminarCuenta, reemplazarPlanContable } = useAccounting();
   const [activeElemento, setActiveElemento] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuenta, setSelectedCuenta] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('CREAR'); // 'CREAR' o 'EDITAR'
+  
+  const fileInputRef = useRef(null);
+
+  const handleImportarExcelClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const result = await parseExcelPlanContable(file);
+      reemplazarPlanContable(result.cuentas);
+      alert(`Importación exitosa. Cuentas importadas: ${result.stats.total}\nCuentas Imputables (U): ${result.stats.usables}`);
+    } catch (err) {
+      console.error(err);
+      alert('Error al importar el archivo Excel');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleLoadLocalPlan = async () => {
+    try {
+      const response = await fetch('/PlanContable.xlsx');
+      const blob = await response.blob();
+      const file = new File([blob], 'PlanContable.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const result = await parseExcelPlanContable(file);
+      reemplazarPlanContable(result.cuentas);
+      alert(`Carga local exitosa. Cuentas importadas: ${result.stats.total}\nCuentas Imputables (U): ${result.stats.usables}`);
+    } catch(err) {
+      console.error(err);
+      alert('Error al cargar PlanContable.xlsx local');
+    }
+  };
 
   // Formulario modal mantenimiento de cuenta (Figma 118-1854)
   const [form, setForm] = useState({
@@ -95,6 +131,15 @@ export const PlanContableView = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.codigo || !form.descripcion) return;
+
+    if (form.amarre1 && !planContable.find(c => c.codigo === form.amarre1)) {
+      alert(`Error: La cuenta destino asignada en Amarre 1 (${form.amarre1}) no existe en el plan contable actual.`);
+      return;
+    }
+    if (form.amarre2 && !planContable.find(c => c.codigo === form.amarre2)) {
+      alert(`Error: La cuenta contrapartida asignada en Amarre 2 (${form.amarre2}) no existe en el plan contable actual.`);
+      return;
+    }
 
     if (modalMode === 'CREAR') {
       agregarCuenta({
@@ -177,11 +222,20 @@ export const PlanContableView = () => {
         <button className="btn btn--secondary btn--sm">
           <Download size={13} /> Exportar
         </button>
-        <button className="btn btn--secondary btn--sm">
+        
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          accept=".xlsx, .xls" 
+          style={{ display: 'none' }} 
+        />
+        <button className="btn btn--secondary btn--sm" onClick={handleImportarExcelClick}>
           <Upload size={13} /> Importar Excel
         </button>
-        <button className="btn btn--secondary btn--sm">
-          <Copy size={13} /> Copy CxP
+        
+        <button className="btn btn--secondary btn--sm" onClick={handleLoadLocalPlan} title="Cargar PlanContable.xlsx de raíz">
+          <Copy size={13} /> Cargar Local
         </button>
 
         <div className="toolbar__spacer"></div>
@@ -395,6 +449,17 @@ export const PlanContableView = () => {
                 onChange={(e) => setForm({ ...form, amarre2: e.target.value })}
               />
             </div>
+          </div>
+          
+          <div className="form-group" style={{ marginTop: '12px' }}>
+            <label className="form-label">Amarre 3 (C. Costo por Defecto)</label>
+            <input 
+              type="text" 
+              className="form-control form-control--mono" 
+              placeholder="ej. CC-ADMIN" 
+              value={form.amarre3}
+              onChange={(e) => setForm({ ...form, amarre3: e.target.value })}
+            />
           </div>
 
           <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', margin: '14px 0 10px 0' }}>
