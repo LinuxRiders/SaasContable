@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { generarAsientoContable } from '../utils/accountingEngine';
 import { mockEmpresas } from '../data/mockEmpresas';
 import { mockPlanContable } from '../data/mockPlanContable';
 import { mockBancos } from '../data/mockBancos';
@@ -14,10 +15,24 @@ const AccountingContext = createContext(null);
 
 export const AccountingProvider = ({ children }) => {
   // --- ESTADOS PRINCIPALES ---
+  const [sesionUsuario, setSesionUsuario] = useState(() => {
+    const saved = localStorage.getItem('sesionUsuario');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [empresas, setEmpresas] = useState(mockEmpresas);
-  const [empresaActiva, setEmpresaActiva] = useState(mockEmpresas[0]);
-  const [periodoActivo, setPeriodoActivo] = useState("SETIEMBRE_2026");
-  const [planContable, setPlanContable] = useState(mockPlanContable);
+  const [empresaActiva, setEmpresaActiva] = useState(null);
+  const [ejercicioActivo, setEjercicioActivo] = useState("");
+  const [periodoActivo, setPeriodoActivo] = useState("");
+  const [estadoPeriodo, setEstadoPeriodo] = useState("ABIERTO");
+
+  const [planesPorEmpresa, setPlanesPorEmpresa] = useState(
+    mockEmpresas.reduce((acc, emp) => {
+      acc[emp.id] = mockPlanContable;
+      return acc;
+    }, {})
+  );
+  
+  const planContable = planesPorEmpresa[empresaActiva?.id] || [];
   const [bancos, setBancos] = useState(mockBancos);
   const [plantillas, setPlantillas] = useState(mockPlantillas);
   const [compras, setCompras] = useState(mockFacturasCompras);
@@ -27,6 +42,68 @@ export const AccountingProvider = ({ children }) => {
   const [cierreEjecutado, setCierreEjecutado] = useState(false);
 
   // --- HELPERS CONTABLES ---
+  
+  // --- SESSION Y NAVEGACIÓN ---
+  const iniciarSesion = (usuario, password, codigoEstudio) => {
+    // Autenticación mock
+    if ((usuario === "admin_pedro" || usuario === "contador_maria") && password) {
+      const sesion = {
+        usuarioId: usuario,
+        nombre: usuario === "admin_pedro" ? "Pedro Admin" : "María Contador",
+        rol: usuario === "admin_pedro" ? "Admin" : "Maker",
+        codigoEstudio: codigoEstudio || "ESTUDIO-01",
+        autenticado: true,
+        fechaAcceso: new Date().toISOString()
+      };
+      setSesionUsuario(sesion);
+      localStorage.setItem('sesionUsuario', JSON.stringify(sesion));
+      return true;
+    }
+    return false;
+  };
+
+  const cerrarSesion = () => {
+    setSesionUsuario(null);
+    setEmpresaActiva(null);
+    localStorage.removeItem('sesionUsuario');
+  };
+
+  const seleccionarEmpresaYPeriodo = (empresaId, ejercicio, periodo, estado) => {
+    const emp = empresas.find(e => e.id === empresaId);
+    if (emp) {
+      setEmpresaActiva(emp);
+      setEjercicioActivo(ejercicio);
+      setPeriodoActivo(periodo);
+      setEstadoPeriodo(estado || "ABIERTO");
+    }
+  };
+
+  const salirDeEmpresa = () => {
+    setEmpresaActiva(null);
+    setEjercicioActivo("");
+    setPeriodoActivo("");
+  };
+
+  const cambiarEstadoPeriodo = (empresaId, ejercicio, periodo, nuevoEstado) => {
+    // Aquí actualizaría mockEmpresas o el estado de periodos de la empresa
+    setEmpresas(prev => prev.map(emp => {
+      if (emp.id === empresaId) {
+        return {
+          ...emp,
+          periodos: (emp.periodos || []).map(p => 
+            p.ejercicio === ejercicio && p.nombrePeriodo === periodo ? { ...p, estado: nuevoEstado } : p
+          )
+        };
+      }
+      return emp;
+    }));
+    
+    // Si es la empresa activa y periodo activo, actualizar el estado actual
+    if (empresaActiva && empresaActiva.id === empresaId && ejercicioActivo === ejercicio && periodoActivo === periodo) {
+      setEstadoPeriodo(nuevoEstado);
+    }
+  };
+
   // Generar siguiente número correlativo de voucher
   const generarCorrelativoVoucher = () => {
     const nextNum = vouchers.length + 1;
@@ -34,30 +111,87 @@ export const AccountingProvider = ({ children }) => {
   };
 
   // 1. REGISTRAR EMPRESA
-  const agregarEmpresa = (nuevaEmpresa) => {
+  const agregarEmpresa = (nuevaEmpresa, modoInicializacion = 'PCGE_2026', planPersonalizado = []) => {
     const id = String(empresas.length + 1).padStart(2, '0');
+    
+    let planParaEmpresa = [];
+    if (modoInicializacion === 'PCGE_2026') {
+      planParaEmpresa = [...mockPlanContable];
+    } else if (modoInicializacion === 'IMPORTAR_EXCEL') {
+      planParaEmpresa = planPersonalizado;
+    } else if (modoInicializacion === 'EN_BLANCO') {
+      planParaEmpresa = [];
+    }
+
     const emp = {
       ...nuevaEmpresa,
       id,
       asientosCount: 0,
-      cuentasCount: 1420,
+      cuentasCount: planParaEmpresa.length,
       estado: "ACTIVA"
     };
+    
     setEmpresas([...empresas, emp]);
+    setPlanesPorEmpresa(prev => ({
+      ...prev,
+      [id]: planParaEmpresa
+    }));
     setEmpresaActiva(emp);
   };
 
   // 2. MANTENIMIENTO DEL PLAN CONTABLE
-  const agregarCuenta = (nuevaCuenta) => {
-    setPlanContable(prev => [...prev, nuevaCuenta]);
+  const aplicarPlanContable = (empresaId, nuevasCuentas, modo = 'REEMPLAZAR') => {
+    setPlanesPorEmpresa(prev => {
+      const planActual = prev[empresaId] || [];
+      if (modo === 'REEMPLAZAR') {
+        return { ...prev, [empresaId]: nuevasCuentas };
+      } else {
+        // FUSIONAR: Mantiene las que existen y agrega nuevas
+        const cuentasMap = new Map();
+        planActual.forEach(c => cuentasMap.set(c.codigo, c));
+        nuevasCuentas.forEach(c => cuentasMap.set(c.codigo, { ...cuentasMap.get(c.codigo), ...c }));
+        return { ...prev, [empresaId]: Array.from(cuentasMap.values()) };
+      }
+    });
   };
 
-  const modificarCuenta = (codigo, cuentaActualizada) => {
-    setPlanContable(prev => prev.map(c => c.codigo === codigo ? { ...c, ...cuentaActualizada } : c));
+  const clonarPlanContable = (empresaOrigenId, empresaDestinoId) => {
+    setPlanesPorEmpresa(prev => {
+      const planOrigen = prev[empresaOrigenId] || [];
+      // Copia profunda
+      const planClonado = JSON.parse(JSON.stringify(planOrigen));
+      return { ...prev, [empresaDestinoId]: planClonado };
+    });
   };
 
-  const eliminarCuenta = (codigo) => {
-    setPlanContable(prev => prev.filter(c => c.codigo !== codigo));
+  const guardarCuenta = (empresaId, cuentaData) => {
+    setPlanesPorEmpresa(prev => {
+      const planActual = prev[empresaId] || [];
+      const existe = planActual.find(c => c.codigo === cuentaData.codigo);
+      if (existe) {
+        return {
+          ...prev,
+          [empresaId]: planActual.map(c => c.codigo === cuentaData.codigo ? { ...c, ...cuentaData } : c)
+        };
+      } else {
+        return {
+          ...prev,
+          [empresaId]: [...planActual, cuentaData].sort((a, b) => a.codigo.localeCompare(b.codigo))
+        };
+      }
+    });
+  };
+
+  const eliminarCuenta = (empresaId, codigo) => {
+    setPlanesPorEmpresa(prev => ({
+      ...prev,
+      [empresaId]: (prev[empresaId] || []).filter(c => c.codigo !== codigo)
+    }));
+  };
+
+  const reemplazarPlanContable = (nuevoPlan) => {
+    if (!empresaActiva) return;
+    aplicarPlanContable(empresaActiva.id, nuevoPlan, 'REEMPLAZAR');
   };
 
   // 3. REGISTRAR CUENTA BANCARIA
@@ -76,34 +210,29 @@ export const AccountingProvider = ({ children }) => {
   // 4. MÓDULO DE COMPRAS (Cálculo 1.18, Crédito vs Contado con doble asiento)
   const registrarCompra = ({ ruc, razonSocial, serieNumero, fecha, concepto, plantillaCodigo, total, modalidad, bancoPago, centroCostos }) => {
     const totalNum = parseFloat(total);
-    // Fórmula indicada por el usuario: Subtotal = Total / 1.18, IGV = Subtotal * 0.18
     const subtotal = parseFloat((totalNum / 1.18).toFixed(2));
     const igv = parseFloat((totalNum - subtotal).toFixed(2));
 
     const plant = plantillas.find(p => p.codigo === plantillaCodigo) || plantillas[0];
-    const ctaBase = plant.cuentaBase;
-    const ctaIgv = plant.cuentaImpuesto;
-    const ctaPasivo = plant.cuentaObligacion;
+
+    // Utilizar el Motor Contable para Asiento 1: Provisión
+    const engineProv = generarAsientoContable({
+      tipoOperacion: 'COMPRA',
+      total: totalNum,
+      concepto,
+      plantilla: plant,
+      centroCostos,
+      ruc,
+      razonSocial
+    }, planContable);
+
+    if (!engineProv.esValido) {
+      alert("Error de motor contable (Provisión Compra):\n" + engineProv.errores.join('\n'));
+      return;
+    }
 
     const voucherProvNum = generarCorrelativoVoucher();
     let voucherPagoNum = null;
-
-    // Asiento 1: Provisión de Compra
-    // Debe: 60 (Gasto/Costo) + Debe: 40 (IGV Crédito Fiscal) / Haber: 42 (Cuentas por Pagar)
-    const lineasProvision = [
-      { cta: ctaBase, desc: "COMPRA / GASTO SEGÚN COMPROBANTE", cc: centroCostos || "", debe: subtotal, haber: 0.00 },
-      { cta: ctaIgv, desc: "IGV - CRÉDITO FISCAL 18%", cc: "", debe: igv, haber: 0.00 },
-      { cta: ctaPasivo, desc: `PROVEEDORES - ${razonSocial}`, cc: "", debe: 0.00, haber: totalNum }
-    ];
-
-    // Si la cuenta tiene amarres automáticos (Clase 6 a Clase 9/79)
-    const cuentaInfo = planContable.find(c => c.codigo === ctaBase);
-    if (cuentaInfo && cuentaInfo.amarre1 && cuentaInfo.amarre2) {
-      lineasProvision.push(
-        { cta: cuentaInfo.amarre1, desc: "DESTINO DEL GASTO / COSTO", cc: centroCostos || cuentaInfo.amarre3 || "CC-ADMIN", debe: subtotal, haber: 0.00 },
-        { cta: cuentaInfo.amarre2, desc: "CARGAS IMPUTABLES A CUENTAS DE COSTOS Y GASTOS", cc: "", debe: 0.00, haber: subtotal }
-      );
-    }
 
     const nuevoVoucherProvision = {
       id: voucherProvNum,
@@ -116,16 +245,29 @@ export const AccountingProvider = ({ children }) => {
       entidadNombre: razonSocial,
       glosa: `Provisión Compra ${serieNumero} - ${concepto}`,
       estado: "ASENTADO",
-      lineas: lineasProvision
+      lineas: engineProv.lineas
     };
 
     const nuevosVouchers = [nuevoVoucherProvision];
 
-    // Camino B: Al Contado (Genera Asiento de Pago Inmediato: 42 al Debe contra 104 al Haber)
+    // Camino B: Al Contado
     if (modalidad === "CONTADO" && bancoPago) {
       const bancoObj = bancos.find(b => b.alias === bancoPago);
       const ctaBanco = bancoObj ? bancoObj.codigoContable : "104101";
-      
+
+      const enginePago = generarAsientoContable({
+        tipoOperacion: 'PAGO',
+        total: totalNum,
+        plantilla: plant,
+        bancoCobroPago: ctaBanco,
+        razonSocial
+      }, planContable);
+
+      if (!enginePago.esValido) {
+        alert("Error de motor contable (Pago Compra):\n" + enginePago.errores.join('\n'));
+        return;
+      }
+
       const vNum2 = `VOU-09-${String(vouchers.length + 2).padStart(4, '0')}`;
       voucherPagoNum = vNum2;
 
@@ -140,10 +282,7 @@ export const AccountingProvider = ({ children }) => {
         entidadNombre: razonSocial,
         glosa: `Cancelación al Contado Factura ${serieNumero} via ${bancoPago}`,
         estado: "ASENTADO",
-        lineas: [
-          { cta: ctaPasivo, desc: `CANCELACIÓN OBLIGACIÓN PROVEEDOR - ${razonSocial}`, cc: "", debe: totalNum, haber: 0.00 },
-          { cta: ctaBanco, desc: `${bancoPago} - SALIDA DE FONDOS`, cc: "", debe: 0.00, haber: totalNum }
-        ]
+        lineas: enginePago.lineas
       };
       nuevosVouchers.push(nuevoVoucherPago);
 
@@ -183,20 +322,24 @@ export const AccountingProvider = ({ children }) => {
     const igv = parseFloat((totalNum - subtotal).toFixed(2));
 
     const plant = plantillas.find(p => p.codigo === plantillaCodigo) || plantillas[3];
-    const ctaBase = plant.cuentaBase;
-    const ctaIgv = plant.cuentaImpuesto;
-    const ctaActivo = plant.cuentaObligacion;
+
+    // Utilizar el Motor Contable para Asiento 1: Provisión
+    const engineProv = generarAsientoContable({
+      tipoOperacion: 'VENTA',
+      total: totalNum,
+      concepto,
+      plantilla: plant,
+      ruc,
+      razonSocial
+    }, planContable);
+
+    if (!engineProv.esValido) {
+      alert("Error de motor contable (Provisión Venta):\n" + engineProv.errores.join('\n'));
+      return;
+    }
 
     const voucherProvNum = generarCorrelativoVoucher();
     let voucherCobroNum = null;
-
-    // Asiento 1: Provisión de Venta
-    // Debe: 12 (Clientes) / Haber: 70 (Ingreso) + Haber: 40 (IGV Débito Fiscal)
-    const lineasProvision = [
-      { cta: ctaActivo, desc: `CLIENTES - ${razonSocial}`, cc: "", debe: totalNum, haber: 0.00 },
-      { cta: ctaBase, desc: "VENTA SEGÚN COMPROBANTE EMITIDO", cc: "", debe: 0.00, haber: subtotal },
-      { cta: ctaIgv, desc: "IGV - DÉBITO FISCAL 18%", cc: "", debe: 0.00, haber: igv }
-    ];
 
     const nuevoVoucherProvision = {
       id: voucherProvNum,
@@ -209,16 +352,29 @@ export const AccountingProvider = ({ children }) => {
       entidadNombre: razonSocial,
       glosa: `Provisión Venta ${serieNumero} - ${concepto}`,
       estado: "ASENTADO",
-      lineas: lineasProvision
+      lineas: engineProv.lineas
     };
 
     const nuevosVouchers = [nuevoVoucherProvision];
 
-    // Camino B: Al Contado (Genera Asiento de Cobro Inmediato: 104 al Debe contra 12 al Haber)
+    // Camino B: Al Contado (Cobro Inmediato)
     if (modalidad === "CONTADO" && bancoCobro) {
       const bancoObj = bancos.find(b => b.alias === bancoCobro);
       const ctaBanco = bancoObj ? bancoObj.codigoContable : "104101";
       
+      const engineCobro = generarAsientoContable({
+        tipoOperacion: 'COBRO',
+        total: totalNum,
+        plantilla: plant,
+        bancoCobroPago: ctaBanco,
+        razonSocial
+      }, planContable);
+
+      if (!engineCobro.esValido) {
+        alert("Error de motor contable (Cobro Venta):\n" + engineCobro.errores.join('\n'));
+        return;
+      }
+
       const vNum2 = `VOU-09-${String(vouchers.length + 2).padStart(4, '0')}`;
       voucherCobroNum = vNum2;
 
@@ -233,10 +389,7 @@ export const AccountingProvider = ({ children }) => {
         entidadNombre: razonSocial,
         glosa: `Cobro al Contado Factura ${serieNumero} ingresado a ${bancoCobro}`,
         estado: "ASENTADO",
-        lineas: [
-          { cta: ctaBanco, desc: `${bancoCobro} - INGRESO DE FONDOS`, cc: "", debe: totalNum, haber: 0.00 },
-          { cta: ctaActivo, desc: `CANCELACIÓN CUENTA POR COBRAR - ${razonSocial}`, cc: "", debe: 0.00, haber: totalNum }
-        ]
+        lineas: engineCobro.lineas
       };
       nuevosVouchers.push(nuevoVoucherCobro);
 
@@ -460,16 +613,27 @@ export const AccountingProvider = ({ children }) => {
 
   return (
     <AccountingContext.Provider value={{
+      sesionUsuario,
+      iniciarSesion,
+      cerrarSesion,
       empresas,
       empresaActiva,
-      setEmpresaActiva,
+      setEmpresaActiva, // deprecable, usar seleccionarEmpresaYPeriodo
+      seleccionarEmpresaYPeriodo,
+      salirDeEmpresa,
       agregarEmpresa,
+      ejercicioActivo,
+      setEjercicioActivo,
       periodoActivo,
       setPeriodoActivo,
+      estadoPeriodo,
+      cambiarEstadoPeriodo,
       planContable,
-      agregarCuenta,
-      modificarCuenta,
+      aplicarPlanContable,
+      clonarPlanContable,
+      guardarCuenta,
       eliminarCuenta,
+      reemplazarPlanContable,
       bancos,
       agregarBanco,
       plantillas,

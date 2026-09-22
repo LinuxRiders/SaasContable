@@ -13,46 +13,67 @@ import {
   Receipt, 
   FileCheck, 
   LockKeyhole,
-  CheckCircle2
+  CheckCircle2,
+  Database,
+  Table,
+  LogOut
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
-  const { periodoActivo, empresaActiva } = useAccounting();
+  const { periodoActivo, estadoPeriodo, empresaActiva, cerrarSesion } = useAccounting();
 
-  const navItems = [
+  const handleLogout = () => {
+    if (window.confirm("¿Está seguro que desea cerrar sesión?")) {
+      cerrarSesion();
+    }
+  };
+
+  const globalNavItems = [
     {
-      group: "1. CONFIGURACIÓN",
+      group: "1. ADMINISTRACIÓN DEL ESTUDIO",
       items: [
-        { id: "empresas", label: "Compañías Usuarias", shortcut: "[C1]", icon: Building2 },
-        { id: "plan", label: "Plan Contable General", shortcut: "[C2]", icon: BookOpen },
-        { id: "bancos", label: "Catálogo de Bancos", shortcut: "[C3]", icon: Landmark },
-        { id: "plantillas", label: "Plantillas Automatización", shortcut: "[C4]", icon: FileCode2 },
-        { id: "usuarios", label: "Usuarios y Segregación", shortcut: "[C5]", icon: Users }
+        { id: "empresas", label: "Cartera de Empresas", shortcut: "[G1]", icon: Building2 },
+        { id: "usuarios", label: "Gestión de Usuarios", shortcut: "[G2]", icon: Users },
+        { id: "backups", label: "Copias de Seguridad", shortcut: "[G3]", icon: Database },
       ]
     },
     {
-      group: "2. OPERACIONES",
+      group: "2. CONFIGURACIÓN MAESTRA",
       items: [
-        { id: "compras", label: "Compras (Proveedores)", shortcut: "[M1]", icon: ShoppingCart },
-        { id: "ventas", label: "Ventas (Clientes)", shortcut: "[M2]", icon: TrendingUp },
-        { id: "tesoreria", label: "Tesorería (Caja / Bancos)", shortcut: "[M3]", icon: Wallet }
-      ]
-    },
-    {
-      group: "3. CONTABILIDAD Y LIBROS",
-      items: [
-        { id: "libros", label: "Libro Diario y Mayor", shortcut: "[M4]", icon: Scale },
-        { id: "conciliacion", label: "Conciliación Bancaria", shortcut: "[M5]", icon: FileCheck },
-        { id: "liquidacion", label: "Liquidación Mensual IGV", shortcut: "[M6]", icon: Receipt }
-      ]
-    },
-    {
-      group: "4. CIERRE ANUAL",
-      items: [
-        { id: "cierre", label: "Cierre de Ejercicio", shortcut: "[M7]", icon: LockKeyhole }
+        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", shortcut: "[G4]", icon: Table },
+        { id: "plantillas_globales", label: "Plantillas Globales", shortcut: "[G5]", icon: FileCode2 }
       ]
     }
   ];
+
+  const companyNavItems = [
+    {
+      group: "1. OPERACIONES",
+      items: [
+        { id: "compras", label: "Compras", shortcut: "[M1]", icon: ShoppingCart },
+        { id: "ventas", label: "Ventas", shortcut: "[M2]", icon: TrendingUp },
+        { id: "tesoreria", label: "Tesorería & Bancos", shortcut: "[M3]", icon: Wallet },
+        { id: "conciliacion", label: "Conciliación Bancaria", shortcut: "[M4]", icon: FileCheck }
+      ]
+    },
+    {
+      group: "2. CONTABILIDAD Y LIBROS",
+      items: [
+        { id: "libros", label: "Libros (Diario / Mayor)", shortcut: "[M5]", icon: Scale },
+        { id: "liquidacion", label: "Liquidación de IGV", shortcut: "[M6]", icon: Receipt },
+        { id: "cierre", label: "Cierre de Ejercicio", shortcut: "[M7]", icon: LockKeyhole }
+      ]
+    },
+    {
+      group: "3. CONFIGURACIÓN",
+      items: [
+        { id: "plan", label: "Catálogo de Cuentas", shortcut: "[C1]", icon: BookOpen },
+        { id: "plantillas", label: "Plantillas de la Empresa", shortcut: "[C2]", icon: FileCode2 }
+      ]
+    }
+  ];
+
+  const navItems = empresaActiva ? companyNavItems : globalNavItems;
 
   return (
     <aside className="sidebar">
@@ -64,15 +85,21 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         </div>
       </div>
 
-      {/* PERIODO ACTIVO CARD */}
-      <div className="sidebar__period-card">
-        <div className="sidebar__period-title">PERÍODO FISCAL ACTIVO</div>
-        <div className="sidebar__period-val">{periodoActivo}</div>
-        <div className="sidebar__period-sub">
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-          Cierre: Abierto
+      {/* PERIODO ACTIVO CARD (Solo visible si hay empresa) */}
+      {empresaActiva && (
+        <div className="sidebar__period-card">
+          <div className="sidebar__period-title">PERÍODO FISCAL ACTIVO</div>
+          <div className="sidebar__period-val">{periodoActivo || 'N/A'}</div>
+          <div className="sidebar__period-sub">
+            <span style={{ 
+              width: 6, height: 6, borderRadius: '50%', 
+              backgroundColor: estadoPeriodo === 'ABIERTO' ? '#10B981' : '#EF4444', 
+              display: 'inline-block' 
+            }}></span>
+            Estado: {estadoPeriodo || 'ABIERTO'}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* NAVEGACIÓN */}
       <nav className="sidebar__nav">
@@ -100,13 +127,24 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
 
       {/* FOOTER STATUS */}
       <div className="sidebar__footer">
+        {!empresaActiva && (
+          <div 
+            className="sidebar__item" 
+            style={{ color: '#ef4444', marginBottom: '1rem' }}
+            onClick={handleLogout}
+          >
+            <span className="sidebar__item-shortcut">[SALIR]</span>
+            <LogOut size={14} />
+            <span>Cerrar Sesión</span>
+          </div>
+        )}
         <div className="sidebar__status-box">
           <div className="sidebar__status-title">
             <CheckCircle2 size={13} color="#10B981" />
             STATUS: CUADRADO [✓]
           </div>
           <div className="sidebar__status-desc">
-            Partida Doble General validada. Plan PCGE alineado.
+            Sistema operativo y sincronizado
           </div>
         </div>
       </div>

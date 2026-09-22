@@ -1,44 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAccounting } from '../context/AccountingContext';
+import { parseExcelPlanContable } from '../utils/excelParser';
+import { descargarPlantillaExcel, exportarPlanAExcel } from '../utils/excelTemplateGenerator';
 import { MetricCard } from '../components/MetricCard';
-import { Modal } from '../components/Modal';
+import { ModalAuditoriaPlan } from '../components/ModalAuditoriaPlan';
+import { ModalClonarPlan } from '../components/ModalClonarPlan';
+import { ModalCuenta } from '../components/ModalCuenta';
 import { 
-  BookOpen, 
   Plus, 
   Search, 
   Edit3, 
   Trash2, 
   CheckSquare, 
   Square, 
-  ArrowRight,
   Download,
   Upload,
   Copy
 } from 'lucide-react';
 
 export const PlanContableView = () => {
-  const { planContable, agregarCuenta, modificarCuenta, eliminarCuenta } = useAccounting();
+  const { planContable, eliminarCuenta } = useAccounting();
   const [activeElemento, setActiveElemento] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modals state
+  const [isAuditoriaOpen, setIsAuditoriaOpen] = useState(false);
+  const [isClonarOpen, setIsClonarOpen] = useState(false);
+  const [isCuentaOpen, setIsCuentaOpen] = useState(false);
+  
+  const [rawExcelCuentas, setRawExcelCuentas] = useState([]);
   const [selectedCuenta, setSelectedCuenta] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('CREAR'); // 'CREAR' o 'EDITAR'
+  
+  const fileInputRef = useRef(null);
 
-  // Formulario modal mantenimiento de cuenta (Figma 118-1854)
-  const [form, setForm] = useState({
-    codigo: '',
-    descripcion: '',
-    elemento: 1,
-    esCuentaU: true,
-    moneda: 'MN',
-    tipoAnalisis: 'Por Documento / RUC',
-    amarre1: '',
-    amarre2: '',
-    amarre3: '',
-    requiereCC: false,
-    rubroEF1: 'EF-01',
-    rubroEF2: 'EF-02'
-  });
+  // Funcionalidad de Botones de la Barra Superior
+  const handleDescargarPlantilla = () => {
+    descargarPlantillaExcel();
+  };
+
+  const handleExportarPlan = () => {
+    exportarPlanAExcel(planContable, 'Catalogo_Contable.xlsx');
+  };
+
+  const handleImportarExcelClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const result = await parseExcelPlanContable(file);
+      setRawExcelCuentas(result.cuentas);
+      setIsAuditoriaOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Error al leer o parsear el archivo Excel.');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleCopiarPlan = () => {
+    setIsClonarOpen(true);
+  };
+
+  const handleNuevaCuenta = () => {
+    setSelectedCuenta(null);
+    setIsCuentaOpen(true);
+  };
+
+  const handleEditarCuenta = (cuenta) => {
+    setSelectedCuenta(cuenta);
+    setIsCuentaOpen(true);
+  };
+
+  // Filtros interactivos
+  const [quickFilter, setQuickFilter] = useState('ALL'); // 'ALL', 'SOLO_U', 'SOLO_AMARRES', 'SOLO_ME'
 
   const elementosTabs = [
     { id: 'ALL', label: 'Todos (1 - 9)' },
@@ -53,66 +91,17 @@ export const PlanContableView = () => {
     { id: 9, label: '9 Analíticas CC' }
   ];
 
-  const handleOpenCrear = () => {
-    setModalMode('CREAR');
-    setForm({
-      codigo: '',
-      descripcion: '',
-      elemento: 6,
-      esCuentaU: true,
-      moneda: 'MN',
-      tipoAnalisis: 'Por Documento / RUC',
-      amarre1: '9411101',
-      amarre2: '7911101',
-      amarre3: 'CC-ADMIN',
-      requiereCC: true,
-      rubroEF1: '',
-      rubroEF2: 'EF-02'
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEditar = (cuenta) => {
-    setModalMode('EDITAR');
-    setSelectedCuenta(cuenta);
-    setForm({
-      codigo: cuenta.codigo,
-      descripcion: cuenta.descripcion,
-      elemento: cuenta.elemento,
-      esCuentaU: cuenta.esCuentaU,
-      moneda: cuenta.moneda,
-      tipoAnalisis: cuenta.tipoAnalisis || 'Por Documento / RUC',
-      amarre1: cuenta.amarre1 || '',
-      amarre2: cuenta.amarre2 || '',
-      amarre3: cuenta.amarre3 || '',
-      requiereCC: cuenta.requiereCC || false,
-      rubroEF1: cuenta.rubroEF1 || '',
-      rubroEF2: cuenta.rubroEF2 || ''
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.codigo || !form.descripcion) return;
-
-    if (modalMode === 'CREAR') {
-      agregarCuenta({
-        ...form,
-        saldoDeudor: 0,
-        saldoAcreedor: 0
-      });
-    } else {
-      modificarCuenta(form.codigo, form);
-    }
-    setIsModalOpen(false);
-  };
-
   const filteredCuentas = planContable.filter(c => {
     const matchElemento = activeElemento === 'ALL' || c.elemento === activeElemento;
     const matchSearch = c.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         c.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchElemento && matchSearch;
+    
+    let matchQuick = true;
+    if (quickFilter === 'SOLO_U') matchQuick = c.esCuentaU;
+    if (quickFilter === 'SOLO_AMARRES') matchQuick = !!c.amarre1 || !!c.amarre2;
+    if (quickFilter === 'SOLO_ME') matchQuick = c.moneda === 'ME';
+
+    return matchElemento && matchSearch && matchQuick;
   });
 
   return (
@@ -123,7 +112,7 @@ export const PlanContableView = () => {
           title="Total Cuentas PCGE" 
           value={planContable.length} 
           subtext="Catálogo oficial en uso" 
-          badgeText="Oficial 2026" 
+          badgeText="Activo" 
           badgeType="info" 
         />
         <MetricCard 
@@ -142,7 +131,7 @@ export const PlanContableView = () => {
         />
         <MetricCard 
           title="Con Amarres de Destino" 
-          value={planContable.filter(c => c.amarre1 && c.amarre2).length} 
+          value={planContable.filter(c => c.amarre1 || c.amarre2).length} 
           subtext="Clase 6 a Clase 9/79" 
           badgeText="Automático" 
           badgeType="warning" 
@@ -162,9 +151,9 @@ export const PlanContableView = () => {
         ))}
       </div>
 
-      {/* TOOLBAR */}
-      <div className="toolbar">
-        <div className="toolbar__search">
+      {/* TOOLBAR SUPERIOR */}
+      <div className="toolbar" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div className="toolbar__search" style={{ minWidth: '250px' }}>
           <Search size={14} className="toolbar__search-icon" />
           <input 
             type="text" 
@@ -174,19 +163,45 @@ export const PlanContableView = () => {
           />
         </div>
 
-        <button className="btn btn--secondary btn--sm">
-          <Download size={13} /> Exportar
-        </button>
-        <button className="btn btn--secondary btn--sm">
-          <Upload size={13} /> Importar Excel
-        </button>
-        <button className="btn btn--secondary btn--sm">
-          <Copy size={13} /> Copy CxP
-        </button>
+        {/* Filtros rápidos */}
+        <select 
+          className="form-control" 
+          style={{ width: 'auto', padding: '0.4rem', fontSize: '13px' }}
+          value={quickFilter}
+          onChange={(e) => setQuickFilter(e.target.value)}
+        >
+          <option value="ALL">Filtro: Mostrar Todas</option>
+          <option value="SOLO_U">Solo Uso (U)</option>
+          <option value="SOLO_AMARRES">Solo con Amarres</option>
+          <option value="SOLO_ME">Solo Moneda Extranjera</option>
+        </select>
 
         <div className="toolbar__spacer"></div>
 
-        <button className="btn btn--primary" onClick={handleOpenCrear}>
+        <button className="btn btn--secondary btn--sm" onClick={handleDescargarPlantilla} title="Descargar plantilla base">
+          <Download size={13} /> Plantilla
+        </button>
+
+        <button className="btn btn--secondary btn--sm" onClick={handleExportarPlan} title="Exportar catálogo actual">
+          <Download size={13} /> Exportar
+        </button>
+        
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          accept=".xlsx, .xls, .csv" 
+          style={{ display: 'none' }} 
+        />
+        <button className="btn btn--secondary btn--sm" onClick={handleImportarExcelClick} title="Subir y auditar Excel">
+          <Upload size={13} /> Subir Excel
+        </button>
+        
+        <button className="btn btn--secondary btn--sm" onClick={handleCopiarPlan} title="Clonar desde otra empresa">
+          <Copy size={13} /> Copiar Plan
+        </button>
+
+        <button className="btn btn--primary btn--sm" onClick={handleNuevaCuenta}>
           <Plus size={14} /> Nueva Cuenta
         </button>
       </div>
@@ -228,9 +243,9 @@ export const PlanContableView = () => {
                   </td>
                   <td className="text-center">
                     {cuenta.esCuentaU ? (
-                      <CheckSquare size={14} color="#10B981" />
+                      <span className="badge badge--success" style={{ padding: '2px 4px', fontSize: '10px' }}>U</span>
                     ) : (
-                      <Square size={14} color="#CBD5E1" />
+                      <span className="badge" style={{ backgroundColor: '#f1f5f9', color: '#64748b', padding: '2px 4px', fontSize: '10px' }}>P</span>
                     )}
                   </td>
                   <td className="mono text-muted">{cuenta.moneda}</td>
@@ -240,7 +255,7 @@ export const PlanContableView = () => {
                   <td className="mono text-muted">{cuenta.amarre1 || '—'}</td>
                   <td className="mono text-muted">{cuenta.amarre2 || '—'}</td>
                   <td>
-                    {cuenta.requiereCC ? (
+                    {cuenta.requiereCentroCostos ? (
                       <span className="badge badge--warning" style={{ fontSize: '10px' }}>
                         Obligatorio
                       </span>
@@ -254,7 +269,7 @@ export const PlanContableView = () => {
                         className="btn btn--secondary btn--sm" 
                         style={{ padding: '3px 6px' }}
                         title="Editar cuenta"
-                        onClick={() => handleOpenEditar(cuenta)}
+                        onClick={() => handleEditarCuenta(cuenta)}
                       >
                         <Edit3 size={12} />
                       </button>
@@ -271,161 +286,33 @@ export const PlanContableView = () => {
                 </tr>
               );
             })}
+            {filteredCuentas.length === 0 && (
+              <tr>
+                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  No se encontraron cuentas contables.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* MODAL MANTENIMIENTO DE CUENTA CONTABLE (Figma 118-1854) */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={modalMode === 'CREAR' ? "Mantenimiento: Nueva Cuenta Contable" : `Mantenimiento de Cuenta Contable (${form.codigo})`}
-        footer={
-          <>
-            <button className="btn btn--secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-            <button className="btn btn--primary" onClick={handleSubmit}>
-              {modalMode === 'CREAR' ? "Guardar Cuenta" : "Actualizar Cuenta"}
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleSubmit}>
-          <div className="callout callout--info">
-            Configure la cuenta contable y sus reglas de amarre automático para transferencias de gastos por naturaleza (Clase 6) a función (Clase 9 y 79).
-          </div>
+      {/* Modales */}
+      <ModalAuditoriaPlan 
+        isOpen={isAuditoriaOpen} 
+        onClose={() => setIsAuditoriaOpen(false)} 
+        rawCuentas={rawExcelCuentas} 
+      />
+      <ModalClonarPlan 
+        isOpen={isClonarOpen} 
+        onClose={() => setIsClonarOpen(false)} 
+      />
+      <ModalCuenta 
+        isOpen={isCuentaOpen} 
+        onClose={() => setIsCuentaOpen(false)} 
+        cuentaEdit={selectedCuenta} 
+      />
 
-          <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', marginBottom: '10px' }}>
-            1. IDENTIFICACIÓN Y NIVEL DE LA CUENTA
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label form-label--required">Número de Cuenta</label>
-              <input 
-                type="text" 
-                className="form-control form-control--mono" 
-                placeholder="ej. 6311101" 
-                value={form.codigo}
-                disabled={modalMode === 'EDITAR'}
-                onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Elemento / Clase</label>
-              <select 
-                className="form-control"
-                value={form.elemento}
-                onChange={(e) => setForm({ ...form, elemento: parseInt(e.target.value) })}
-              >
-                <option value={1}>1 - Activo Disponible</option>
-                <option value={2}>2 - Activo Realizable</option>
-                <option value={3}>3 - Activo Inmovilizado</option>
-                <option value={4}>4 - Pasivo</option>
-                <option value={5}>5 - Patrimonio</option>
-                <option value={6}>6 - Gastos por Naturaleza</option>
-                <option value={7}>7 - Ingresos</option>
-                <option value={8}>8 - Cierre</option>
-                <option value={9}>9 - Analíticas de Explotación</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label form-label--required">Descripción / Denominación</label>
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="ej. SERVICIOS DE TRANSPORTE Y FLETE" 
-              value={form.descripcion}
-              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              required
-            />
-          </div>
-
-          <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', margin: '14px 0 10px 0' }}>
-            2. MONEDA Y AMARRES AUTOMÁTICOS (DESTINO CONTABLE)
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Moneda</label>
-              <select 
-                className="form-control"
-                value={form.moneda}
-                onChange={(e) => setForm({ ...form, moneda: e.target.value })}
-              >
-                <option value="MN">MN - Soles (S/.)</option>
-                <option value="ME">ME - Dólares ($)</option>
-                <option value="AMBAS">Ambas Monedas</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tipo de Análisis</label>
-              <select 
-                className="form-control"
-                value={form.tipoAnalisis}
-                onChange={(e) => setForm({ ...form, tipoAnalisis: e.target.value })}
-              >
-                <option>Por Documento / RUC</option>
-                <option>Solo Monto</option>
-                <option>Sin Análisis</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Amarre 1 (Debe Destino)</label>
-              <input 
-                type="text" 
-                className="form-control form-control--mono" 
-                placeholder="ej. 9411101" 
-                value={form.amarre1}
-                onChange={(e) => setForm({ ...form, amarre1: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Amarre 2 (Haber Contrapartida)</label>
-              <input 
-                type="text" 
-                className="form-control form-control--mono" 
-                placeholder="ej. 7911101" 
-                value={form.amarre2}
-                onChange={(e) => setForm({ ...form, amarre2: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', margin: '14px 0 10px 0' }}>
-            3. CARACTERÍSTICAS Y OBLIGATORIEDAD
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label className="form-checkbox">
-              <input 
-                type="checkbox" 
-                checked={form.esCuentaU}
-                onChange={(e) => setForm({ ...form, esCuentaU: e.target.checked })}
-              />
-              <span className="form-checkbox-label">
-                <strong>Cuenta de Uso (U)</strong> — Permite registrar asientos contables directamente en vouchers.
-              </span>
-            </label>
-
-            <label className="form-checkbox">
-              <input 
-                type="checkbox" 
-                checked={form.requiereCC}
-                onChange={(e) => setForm({ ...form, requiereCC: e.target.checked })}
-              />
-              <span className="form-checkbox-label">
-                <strong>Requiere Centro de Costo</strong> — Obligatorio seleccionar CC al momento de contabilizar.
-              </span>
-            </label>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

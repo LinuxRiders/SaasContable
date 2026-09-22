@@ -7,7 +7,9 @@ Este proyecto corresponde al desarrollo rápido y prototipo (MVP) del sistema co
 ## Tecnologías utilizadas
 - **React 18** + **Vite**
 - **Lucide React** (iconografía)
-- **Context API** (`AccountingContext`) para gestión de estado y datos mockeados
+- **Context API** (`AccountingContext`) para gestión de estado central.
+- **xlsx (SheetJS)** para importación/parsing dinámico del Plan Contable (`excelParser.js`).
+- **Motor Contable Lógico** (`accountingEngine.js`) para inferencia matemática de Debe/Haber y amarres automáticos (Partida Doble Estricta).
 
 ## Instalación y ejecución local
 
