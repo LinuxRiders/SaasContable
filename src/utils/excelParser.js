@@ -16,22 +16,33 @@ export const parseExcelPlanContable = async (file) => {
         const accountsMap = new Map();
         
         rawJson.forEach(row => {
-          // Detect columns flexibly
-          let rawCuenta = row['CUENTA'] || row['cuenta'] || row['Cuenta'];
-          if (rawCuenta === undefined || rawCuenta === null || String(rawCuenta).trim() === '') return;
+          // Normalizar llaves para la lectura flexible
+          const normalizedRow = {};
+          for (const key in row) {
+            normalizedRow[key.toUpperCase().trim()] = row[key];
+          }
+
+          let rawCuenta = normalizedRow['CUENTA'] || normalizedRow['CODIGO'] || normalizedRow['CÓDIGO'];
+          if (!rawCuenta || String(rawCuenta).trim() === '') return;
           
-          let codigo = String(rawCuenta).trim();
-          let descripcion = (row['DESCRIPCION'] || row['descripcion'] || row['Descripcion'] || '').trim();
-          let rawMoneda = String(row['MONEDA'] || row['moneda'] || '').toUpperCase();
-          let moneda = (rawMoneda.includes('DOLAR') || rawMoneda.includes('ME')) ? 'ME' : 'MN';
+          // Limpiar código de espacios y signos
+          let codigo = String(rawCuenta).replace(/[^0-9A-Za-z]/g, '').trim();
+          let descripcion = String(normalizedRow['DESCRIPCION'] || normalizedRow['DESCRIPCIÓN'] || normalizedRow['NOMBRE'] || '').trim();
+          let rawMoneda = String(normalizedRow['MONEDA'] || '').toUpperCase();
+          let moneda = (rawMoneda.includes('DOLAR') || rawMoneda.includes('ME') || rawMoneda === 'USD') ? 'ME' : 'MN';
           
-          let amarre1 = String(row['AMARRE_1'] || row['amarre1'] || row['Amarre 1'] || '').trim();
-          let amarre2 = String(row['AMARRE_2'] || row['amarre2'] || row['Amarre 2'] || '').trim();
-          let amarre3 = String(row['AMARRE_3'] || row['amarre3'] || row['Amarre 3'] || '').trim();
-          let rubros = String(row['RUBROS'] || row['rubros'] || row['DESRUB'] || '').trim();
-          let digitoStr = String(row['DIGITO'] || row['digito'] || '');
-          let digito = digitoStr ? parseInt(digitoStr, 10) : undefined;
+          let amarre1 = String(normalizedRow['AMARRE_1'] || normalizedRow['AMARRE 1'] || normalizedRow['AMARRE_1_DEBE'] || '').trim();
+          let amarre2 = String(normalizedRow['AMARRE_2'] || normalizedRow['AMARRE 2'] || normalizedRow['AMARRE_2_HABER'] || '').trim();
           
+          let rawTipoAnalisis = String(normalizedRow['TIPO_ANALISIS'] || normalizedRow['TIPO ANALISIS'] || normalizedRow['ANALISIS'] || '').toUpperCase();
+          let tipoAnalisis = "Solo Monto / Sin Análisis";
+          if (rawTipoAnalisis.includes('DOC') || rawTipoAnalisis.includes('RUC')) tipoAnalisis = "Por Documento / RUC";
+          else if (rawTipoAnalisis.includes('BANC') || rawTipoAnalisis.includes('CONCILIACION')) tipoAnalisis = "Banco / Conciliación";
+          else if (rawTipoAnalisis.includes('CENTRO') || rawTipoAnalisis.includes('COSTO')) tipoAnalisis = "Centro de Costos";
+
+          let rawExigeCC = String(normalizedRow['EXIGE_CC'] || normalizedRow['CENTRO COSTO'] || normalizedRow['CC'] || '').toUpperCase();
+          let requiereCentroCostos = rawExigeCC === 'SI' || rawExigeCC === 'S' || rawExigeCC === 'TRUE' || rawExigeCC === '1';
+
           let elemento = parseInt(codigo.charAt(0), 10);
           if (isNaN(elemento)) elemento = 0;
           
@@ -39,32 +50,14 @@ export const parseExcelPlanContable = async (file) => {
             codigo,
             descripcion,
             elemento,
+            nivel: codigo.length,
             moneda,
             amarre1: amarre1 || undefined,
             amarre2: amarre2 || undefined,
-            amarre3: amarre3 || undefined,
-            rubros: rubros || undefined,
-            digito,
-            requiereCentroCostos: amarre1 && amarre1.startsWith('9') ? true : false,
+            tipoAnalisis,
+            requiereCentroCostos,
+            esCuentaU: false // Se calculará después
           });
-        });
-        
-        // Generate synthetic parents
-        const allCodes = Array.from(accountsMap.keys());
-        allCodes.forEach(code => {
-          for (let i = 1; i < code.length; i++) {
-            const parentCode = code.substring(0, i);
-            if (!accountsMap.has(parentCode)) {
-              accountsMap.set(parentCode, {
-                codigo: parentCode,
-                descripcion: `CUENTA SINTÉTICA ${parentCode}`,
-                elemento: parseInt(parentCode.charAt(0), 10),
-                moneda: 'MN',
-                esCuentaU: false,
-                requiereCentroCostos: false
-              });
-            }
-          }
         });
         
         // Determine esCuentaU and level
@@ -78,11 +71,8 @@ export const parseExcelPlanContable = async (file) => {
         });
         
         finalAccounts.forEach(acc => {
-          if (acc.codigo.length <= 3) {
-            acc.esCuentaU = false;
-          } else {
-            acc.esCuentaU = !parentCodes.has(acc.codigo);
-          }
+          // Es cuenta U si tiene >= 6 dígitos o si nadie la tiene como padre
+          acc.esCuentaU = acc.codigo.length >= 6 || !parentCodes.has(acc.codigo);
         });
         
         // Sort by code
@@ -93,7 +83,7 @@ export const parseExcelPlanContable = async (file) => {
           stats: {
             total: finalAccounts.length,
             usables: finalAccounts.filter(c => c.esCuentaU).length,
-            conAmarre: finalAccounts.filter(c => c.amarre1).length
+            conAmarre: finalAccounts.filter(c => c.amarre1 || c.amarre2).length
           }
         });
       } catch (err) {

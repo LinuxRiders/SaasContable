@@ -18,7 +18,13 @@ export const mockEmpresas = [
     digitosRegistro: "7 Dígitos (Analítico)",
     estado: "ACTIVA",
     asientosCount: 4821,
-    cuentasCount: 1420
+    cuentasCount: 1420,
+    ejerciciosDisponibles: ["2026", "2025"],
+    plantillasActivasIds: ["TPL-COMPRA-01", "TPL-VENTA-01", "TPL-SERV-01"],
+    periodos: [
+      { ejercicio: "2026", mes: 8, nombrePeriodo: "AGOSTO_2026", estado: "CERRADO" },
+      { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
+    ]
   },
   {
     id: "02",
@@ -39,7 +45,12 @@ export const mockEmpresas = [
     digitosRegistro: "7 Dígitos (Analítico)",
     estado: "ACTIVA",
     asientosCount: 1240,
-    cuentasCount: 1105
+    cuentasCount: 1105,
+    ejerciciosDisponibles: ["2026"],
+    plantillasActivasIds: ["TPL-COMPRA-01", "TPL-VENTA-01"],
+    periodos: [
+      { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
+    ]
   },
   {
     id: "03",
@@ -60,7 +71,12 @@ export const mockEmpresas = [
     digitosRegistro: "7 Dígitos (Analítico)",
     estado: "ACTIVA",
     asientosCount: 890,
-    cuentasCount: 980
+    cuentasCount: 980,
+    ejerciciosDisponibles: ["2026"],
+    plantillasActivasIds: ["TPL-SERV-01"],
+    periodos: [
+      { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
+    ]
   },
   {
     id: "04",
@@ -81,6 +97,11 @@ export const mockEmpresas = [
     digitosRegistro: "7 Dígitos (Analítico)",
     estado: "EN REVISIÓN",
     asientosCount: 15,
-    cuentasCount: 450
+    cuentasCount: 450,
+    ejerciciosDisponibles: ["2026"],
+    plantillasActivasIds: [],
+    periodos: [
+      { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
+    ]
   }
 ];

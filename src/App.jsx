@@ -14,9 +14,23 @@ import { LibrosContablesView } from './views/LibrosContablesView';
 import { ConciliacionView } from './views/ConciliacionView';
 import { LiquidacionIGVView } from './views/LiquidacionIGVView';
 import { CierreEjercicioView } from './views/CierreEjercicioView';
+import { BackupsView } from './views/BackupsView';
+import { TablasSunatView } from './views/TablasSunatView';
+
+import { LoginView } from './views/LoginView';
+import { useAccounting } from './context/AccountingContext';
 
 export function AppContent() {
-  const [activeTab, setActiveTab] = useState('compras');
+  const { sesionUsuario, empresaActiva } = useAccounting();
+  const [activeTab, setActiveTab] = React.useState('empresas');
+
+  React.useEffect(() => {
+    if (empresaActiva) {
+      setActiveTab('compras');
+    } else {
+      setActiveTab('empresas');
+    }
+  }, [empresaActiva]);
 
   const tabTitles = {
     empresas: "Información de Compañías Usuarias (Figma 118-2)",
@@ -59,10 +73,20 @@ export function AppContent() {
         return <LiquidacionIGVView />;
       case 'cierre':
         return <CierreEjercicioView />;
+      case 'backups':
+        return <BackupsView />;
+      case 'tablas_sunat':
+        return <TablasSunatView />;
+      case 'plantillas_globales':
+        return <PlantillasView />;
       default:
-        return <ComprasView />;
+        return <EmpresasView />;
     }
   };
+
+  if (!sesionUsuario) {
+    return <LoginView />;
+  }
 
   return (
     <div className="app-layout">

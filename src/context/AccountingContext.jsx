@@ -15,9 +15,16 @@ const AccountingContext = createContext(null);
 
 export const AccountingProvider = ({ children }) => {
   // --- ESTADOS PRINCIPALES ---
+  const [sesionUsuario, setSesionUsuario] = useState(() => {
+    const saved = localStorage.getItem('sesionUsuario');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [empresas, setEmpresas] = useState(mockEmpresas);
-  const [empresaActiva, setEmpresaActiva] = useState(mockEmpresas[0]);
-  const [periodoActivo, setPeriodoActivo] = useState("SETIEMBRE_2026");
+  const [empresaActiva, setEmpresaActiva] = useState(null);
+  const [ejercicioActivo, setEjercicioActivo] = useState("");
+  const [periodoActivo, setPeriodoActivo] = useState("");
+  const [estadoPeriodo, setEstadoPeriodo] = useState("ABIERTO");
+
   const [planesPorEmpresa, setPlanesPorEmpresa] = useState(
     mockEmpresas.reduce((acc, emp) => {
       acc[emp.id] = mockPlanContable;
@@ -35,6 +42,68 @@ export const AccountingProvider = ({ children }) => {
   const [cierreEjecutado, setCierreEjecutado] = useState(false);
 
   // --- HELPERS CONTABLES ---
+  
+  // --- SESSION Y NAVEGACIÓN ---
+  const iniciarSesion = (usuario, password, codigoEstudio) => {
+    // Autenticación mock
+    if ((usuario === "admin_pedro" || usuario === "contador_maria") && password) {
+      const sesion = {
+        usuarioId: usuario,
+        nombre: usuario === "admin_pedro" ? "Pedro Admin" : "María Contador",
+        rol: usuario === "admin_pedro" ? "Admin" : "Maker",
+        codigoEstudio: codigoEstudio || "ESTUDIO-01",
+        autenticado: true,
+        fechaAcceso: new Date().toISOString()
+      };
+      setSesionUsuario(sesion);
+      localStorage.setItem('sesionUsuario', JSON.stringify(sesion));
+      return true;
+    }
+    return false;
+  };
+
+  const cerrarSesion = () => {
+    setSesionUsuario(null);
+    setEmpresaActiva(null);
+    localStorage.removeItem('sesionUsuario');
+  };
+
+  const seleccionarEmpresaYPeriodo = (empresaId, ejercicio, periodo, estado) => {
+    const emp = empresas.find(e => e.id === empresaId);
+    if (emp) {
+      setEmpresaActiva(emp);
+      setEjercicioActivo(ejercicio);
+      setPeriodoActivo(periodo);
+      setEstadoPeriodo(estado || "ABIERTO");
+    }
+  };
+
+  const salirDeEmpresa = () => {
+    setEmpresaActiva(null);
+    setEjercicioActivo("");
+    setPeriodoActivo("");
+  };
+
+  const cambiarEstadoPeriodo = (empresaId, ejercicio, periodo, nuevoEstado) => {
+    // Aquí actualizaría mockEmpresas o el estado de periodos de la empresa
+    setEmpresas(prev => prev.map(emp => {
+      if (emp.id === empresaId) {
+        return {
+          ...emp,
+          periodos: (emp.periodos || []).map(p => 
+            p.ejercicio === ejercicio && p.nombrePeriodo === periodo ? { ...p, estado: nuevoEstado } : p
+          )
+        };
+      }
+      return emp;
+    }));
+    
+    // Si es la empresa activa y periodo activo, actualizar el estado actual
+    if (empresaActiva && empresaActiva.id === empresaId && ejercicioActivo === ejercicio && periodoActivo === periodo) {
+      setEstadoPeriodo(nuevoEstado);
+    }
+  };
+
   // Generar siguiente número correlativo de voucher
   const generarCorrelativoVoucher = () => {
     const nextNum = vouchers.length + 1;
@@ -71,33 +140,58 @@ export const AccountingProvider = ({ children }) => {
   };
 
   // 2. MANTENIMIENTO DEL PLAN CONTABLE
-  const agregarCuenta = (nuevaCuenta) => {
-    setPlanesPorEmpresa(prev => ({
-      ...prev,
-      [empresaActiva.id]: [...(prev[empresaActiva.id] || []), nuevaCuenta]
-    }));
+  const aplicarPlanContable = (empresaId, nuevasCuentas, modo = 'REEMPLAZAR') => {
+    setPlanesPorEmpresa(prev => {
+      const planActual = prev[empresaId] || [];
+      if (modo === 'REEMPLAZAR') {
+        return { ...prev, [empresaId]: nuevasCuentas };
+      } else {
+        // FUSIONAR: Mantiene las que existen y agrega nuevas
+        const cuentasMap = new Map();
+        planActual.forEach(c => cuentasMap.set(c.codigo, c));
+        nuevasCuentas.forEach(c => cuentasMap.set(c.codigo, { ...cuentasMap.get(c.codigo), ...c }));
+        return { ...prev, [empresaId]: Array.from(cuentasMap.values()) };
+      }
+    });
   };
 
-  const modificarCuenta = (codigo, cuentaActualizada) => {
-    setPlanesPorEmpresa(prev => ({
-      ...prev,
-      [empresaActiva.id]: (prev[empresaActiva.id] || []).map(c => c.codigo === codigo ? { ...c, ...cuentaActualizada } : c)
-    }));
+  const clonarPlanContable = (empresaOrigenId, empresaDestinoId) => {
+    setPlanesPorEmpresa(prev => {
+      const planOrigen = prev[empresaOrigenId] || [];
+      // Copia profunda
+      const planClonado = JSON.parse(JSON.stringify(planOrigen));
+      return { ...prev, [empresaDestinoId]: planClonado };
+    });
   };
 
-  const eliminarCuenta = (codigo) => {
+  const guardarCuenta = (empresaId, cuentaData) => {
+    setPlanesPorEmpresa(prev => {
+      const planActual = prev[empresaId] || [];
+      const existe = planActual.find(c => c.codigo === cuentaData.codigo);
+      if (existe) {
+        return {
+          ...prev,
+          [empresaId]: planActual.map(c => c.codigo === cuentaData.codigo ? { ...c, ...cuentaData } : c)
+        };
+      } else {
+        return {
+          ...prev,
+          [empresaId]: [...planActual, cuentaData].sort((a, b) => a.codigo.localeCompare(b.codigo))
+        };
+      }
+    });
+  };
+
+  const eliminarCuenta = (empresaId, codigo) => {
     setPlanesPorEmpresa(prev => ({
       ...prev,
-      [empresaActiva.id]: (prev[empresaActiva.id] || []).filter(c => c.codigo !== codigo)
+      [empresaId]: (prev[empresaId] || []).filter(c => c.codigo !== codigo)
     }));
   };
 
   const reemplazarPlanContable = (nuevoPlan) => {
     if (!empresaActiva) return;
-    setPlanesPorEmpresa(prev => ({
-      ...prev,
-      [empresaActiva.id]: nuevoPlan
-    }));
+    aplicarPlanContable(empresaActiva.id, nuevoPlan, 'REEMPLAZAR');
   };
 
   // 3. REGISTRAR CUENTA BANCARIA
@@ -519,15 +613,25 @@ export const AccountingProvider = ({ children }) => {
 
   return (
     <AccountingContext.Provider value={{
+      sesionUsuario,
+      iniciarSesion,
+      cerrarSesion,
       empresas,
       empresaActiva,
-      setEmpresaActiva,
+      setEmpresaActiva, // deprecable, usar seleccionarEmpresaYPeriodo
+      seleccionarEmpresaYPeriodo,
+      salirDeEmpresa,
       agregarEmpresa,
+      ejercicioActivo,
+      setEjercicioActivo,
       periodoActivo,
       setPeriodoActivo,
+      estadoPeriodo,
+      cambiarEstadoPeriodo,
       planContable,
-      agregarCuenta,
-      modificarCuenta,
+      aplicarPlanContable,
+      clonarPlanContable,
+      guardarCuenta,
       eliminarCuenta,
       reemplazarPlanContable,
       bancos,

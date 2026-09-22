@@ -2,14 +2,44 @@ import React, { useState } from 'react';
 import { useAccounting } from '../context/AccountingContext';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
-import { Building2, Plus, CheckCircle, Search, Edit3, Eye, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Building2, Plus, CheckCircle, Search, ArrowRight, ArrowLeft, MoreVertical, LogIn, Calendar, Settings } from 'lucide-react';
 import { parseExcelPlanContable } from '../utils/excelParser';
 
 export const EmpresasView = () => {
-  const { empresas, empresaActiva, setEmpresaActiva, agregarEmpresa } = useAccounting();
+  const { empresas, agregarEmpresa, seleccionarEmpresaYPeriodo } = useAccounting();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState(1);
+
+  // Estados locales para los selectores de tarjeta
+  const [selectedPeriods, setSelectedPeriods] = useState({});
+
+  const handlePeriodChange = (empId, field, value) => {
+    setSelectedPeriods(prev => ({
+      ...prev,
+      [empId]: {
+        ...prev[empId],
+        [field]: value
+      }
+    }));
+  };
+
+  const getEmpresaSelections = (emp) => {
+    const state = selectedPeriods[emp.id] || {};
+    const ej = state.ejercicio || (emp.ejerciciosDisponibles && emp.ejerciciosDisponibles.length > 0 ? emp.ejerciciosDisponibles[0] : new Date().getFullYear().toString());
+    const pd = state.periodo || (emp.periodos && emp.periodos.length > 0 ? emp.periodos[0].nombrePeriodo : `ENERO_${ej}`);
+    
+    // Buscar estado del periodo
+    const periodoObj = emp.periodos?.find(p => p.ejercicio === ej && p.nombrePeriodo === pd);
+    const estado = periodoObj ? periodoObj.estado : 'ABIERTO';
+
+    return { ejercicio: ej, periodo: pd, estado };
+  };
+
+  const handleIngresar = (emp) => {
+    const selections = getEmpresaSelections(emp);
+    seleccionarEmpresaYPeriodo(emp.id, selections.ejercicio, selections.periodo, selections.estado);
+  };
 
   // Formulario nueva empresa
   const [form, setForm] = useState({
@@ -26,7 +56,15 @@ export const EmpresasView = () => {
     correo: '',
     telefono: '',
     modoInicializacion: 'PCGE_2026',
-    planPersonalizado: []
+    planPersonalizado: [],
+    // Nuevos campos Task-06
+    plantillasActivas: {
+      compras: true,
+      ventas: true,
+      servicios: true
+    },
+    autoAmarres: true,
+    autoDifCambio: true
   });
 
   const handleNextStep = (e) => {
@@ -51,6 +89,19 @@ export const EmpresasView = () => {
     }
   };
 
+  const simularSunat = () => {
+    if (form.ruc.length === 11) {
+      setForm(prev => ({
+        ...prev,
+        razonSocial: `EMPRESA SIMULADA ${form.ruc} S.A.C.`,
+        abreviatura: `SIMULADA ${form.ruc.substring(8)}`,
+        direccion: 'AV. SIMULACIÓN 123'
+      }));
+    } else {
+      alert("Ingrese un RUC de 11 dígitos");
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.ruc || !form.razonSocial) return;
@@ -63,6 +114,13 @@ export const EmpresasView = () => {
     let planAsignadoLabel = "PCGE 2026 - Oficial Modificado";
     if (form.modoInicializacion === 'IMPORTAR_EXCEL') planAsignadoLabel = "Importado de Excel";
     if (form.modoInicializacion === 'EN_BLANCO') planAsignadoLabel = "Plan Vacío";
+
+    const newPlantillasIds = [];
+    if (form.plantillasActivas.compras) newPlantillasIds.push("TPL-COMPRA-01");
+    if (form.plantillasActivas.ventas) newPlantillasIds.push("TPL-VENTA-01");
+    if (form.plantillasActivas.servicios) newPlantillasIds.push("TPL-SERV-01");
+
+    const currentYear = new Date().getFullYear().toString();
 
     agregarEmpresa({
       ruc: form.ruc,
@@ -78,7 +136,12 @@ export const EmpresasView = () => {
       correo: form.correo,
       telefono: form.telefono,
       planAsignado: planAsignadoLabel,
-      digitosRegistro: "7 Dígitos (Analítico)"
+      digitosRegistro: "7 Dígitos (Analítico)",
+      ejerciciosDisponibles: [currentYear],
+      plantillasActivasIds: newPlantillasIds,
+      periodos: [
+        { ejercicio: currentYear, mes: 1, nombrePeriodo: `ENERO_${currentYear}`, estado: 'ABIERTO' }
+      ]
     }, form.modoInicializacion, form.planPersonalizado);
 
     setIsModalOpen(false);
@@ -97,14 +160,18 @@ export const EmpresasView = () => {
       correo: '',
       telefono: '',
       modoInicializacion: 'PCGE_2026',
-      planPersonalizado: []
+      planPersonalizado: [],
+      plantillasActivas: { compras: true, ventas: true, servicios: true },
+      autoAmarres: true,
+      autoDifCambio: true
     });
   };
 
   const filteredEmpresas = empresas.filter(emp => 
     emp.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.ruc.includes(searchTerm) ||
-    emp.abreviatura.toLowerCase().includes(searchTerm.toLowerCase())
+    emp.regimen.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.abreviatura?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -133,21 +200,21 @@ export const EmpresasView = () => {
           badgeType="success" 
         />
         <MetricCard 
-          title="Empresa en Operación" 
-          value={empresaActiva.abreviatura} 
-          subtext={`RUC: ${empresaActiva.ruc}`} 
-          badgeText="Seleccionada" 
+          title="Periodos Activos" 
+          value={empresas.filter(e => e.periodos?.some(p => p.estado === 'ABIERTO')).length} 
+          subtext="Empresas con meses abiertos" 
+          badgeText="Operativas" 
           badgeType="warning" 
         />
       </div>
 
       {/* TOOLBAR */}
-      <div className="toolbar">
-        <div className="toolbar__search">
+      <div className="toolbar" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+        <div className="toolbar__search" style={{ width: '350px' }}>
           <Search size={14} className="toolbar__search-icon" />
           <input 
             type="text" 
-            placeholder="Buscar por RUC, Razón Social o Nombre..." 
+            placeholder="Buscar por RUC, Razón Social o Régimen..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -161,64 +228,95 @@ export const EmpresasView = () => {
         </button>
       </div>
 
-      {/* TABLA DE EMPRESAS */}
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th style={{ width: '40px' }}>N°</th>
-              <th>Abreviatura / Razón Social</th>
-              <th style={{ width: '130px' }}>N° RUC</th>
-              <th>Régimen Tributario</th>
-              <th>Plan Asignado</th>
-              <th style={{ width: '100px' }} className="text-center">Estado</th>
-              <th style={{ width: '140px' }} className="text-center">Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEmpresas.map((emp, index) => {
-              const isSelected = emp.id === empresaActiva.id;
-              return (
-                <tr key={emp.id} style={{ backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.05)' : undefined }}>
-                  <td className="mono text-muted">{emp.id}</td>
-                  <td>
-                    <div style={{ fontWeight: 600, color: isSelected ? '#2563EB' : '#0F172A' }}>
-                      {emp.abreviatura}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#64748B' }}>{emp.razonSocial}</div>
-                  </td>
-                  <td className="mono font-bold">{emp.ruc}</td>
-                  <td style={{ fontSize: '12px' }}>{emp.regimen}</td>
-                  <td style={{ fontSize: '11.5px', color: '#475569' }}>
-                    {emp.planAsignado} <span className="mono" style={{ color: '#10B981' }}>({emp.cuentasCount} Ctas)</span>
-                  </td>
-                  <td className="text-center">
+      {/* GRID DE TARJETAS DE EMPRESAS (TASK-05) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+        {filteredEmpresas.map((emp) => {
+          const selections = getEmpresaSelections(emp);
+
+          return (
+            <div key={emp.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ flex: 1, paddingRight: '1rem' }}>
+                  <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', color: 'var(--text-color)', lineHeight: 1.2 }}>
+                    {emp.abreviatura || emp.razonSocial}
+                  </h3>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                    {emp.razonSocial}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                    <span className="badge badge--info">{emp.ruc}</span>
                     <span className={`badge badge--${emp.estado === 'ACTIVA' ? 'success' : 'warning'}`}>
                       {emp.estado}
                     </span>
-                  </td>
-                  <td className="text-center">
-                    {isSelected ? (
-                      <span className="badge badge--success" style={{ fontSize: '10.5px' }}>
-                        <CheckCircle size={11} /> Activa
-                      </span>
-                    ) : (
-                      <button 
-                        className="btn btn--secondary btn--sm" 
-                        onClick={() => setEmpresaActiva(emp)}
-                      >
-                        Seleccionar
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+                <button className="btn btn--icon" title="Opciones de Empresa">
+                  <MoreVertical size={16} color="var(--text-secondary)" />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Régimen:</span> <span style={{ fontWeight: 500, color: 'var(--text-color)' }}>{emp.regimen}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Moneda:</span> <span style={{ fontWeight: 500, color: 'var(--text-color)' }}>{emp.monedaBase.split(' - ')[0]}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Plan Asignado:</span> <span style={{ fontWeight: 500, color: 'var(--text-color)' }}>{emp.cuentasCount} Ctas</span>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', marginTop: 'auto' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Calendar size={14} /> Seleccionar Periodo
+                </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <select 
+                    className="form-control" 
+                    style={{ flex: 1, padding: '0.4rem', fontSize: '0.85rem' }}
+                    value={selections.ejercicio}
+                    onChange={(e) => handlePeriodChange(emp.id, 'ejercicio', e.target.value)}
+                  >
+                    {(emp.ejerciciosDisponibles || ['2026']).map(ej => (
+                      <option key={ej} value={ej}>{ej}</option>
+                    ))}
+                  </select>
+                  <select 
+                    className="form-control" 
+                    style={{ flex: 2, padding: '0.4rem', fontSize: '0.85rem' }}
+                    value={selections.periodo}
+                    onChange={(e) => handlePeriodChange(emp.id, 'periodo', e.target.value)}
+                  >
+                    {(emp.periodos || [{ nombrePeriodo: 'SETIEMBRE_2026' }])
+                      .filter(p => !selections.ejercicio || p.ejercicio === selections.ejercicio)
+                      .map(p => (
+                      <option key={p.nombrePeriodo} value={p.nombrePeriodo}>{p.nombrePeriodo.split('_')[0]}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: selections.estado === 'ABIERTO' ? '#10B981' : '#EF4444' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: selections.estado === 'ABIERTO' ? '#10B981' : '#EF4444' }}></span>
+                    {selections.estado}
+                  </div>
+                  <button 
+                    className="btn btn--primary" 
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                    onClick={() => handleIngresar(emp)}
+                  >
+                    Ingresar <LogIn size={14} style={{ marginLeft: '4px' }} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* MODAL: INGRESAR NUEVA COMPAÑÍA USUARIA */}
+      {/* MODAL: INGRESAR NUEVA COMPAÑÍA USUARIA (ASISTENTE 3 PASOS) */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
@@ -240,7 +338,7 @@ export const EmpresasView = () => {
                     Siguiente <ArrowRight size={14} style={{ marginLeft: '4px' }} />
                   </button>
                 ) : (
-                  <button className="btn btn--primary" onClick={handleSubmit}>Guardar Empresa</button>
+                  <button className="btn btn--primary" onClick={handleSubmit}>Aperturar Empresa</button>
                 )}
               </div>
             </div>
@@ -259,18 +357,23 @@ export const EmpresasView = () => {
               </div>
 
               <div className="form-row">
-                <div className="form-group">
+                <div className="form-group" style={{ flex: 1 }}>
                   <label className="form-label form-label--required">Número de RUC</label>
-                  <input 
-                    type="text" 
-                    className="form-control form-control--mono" 
-                    placeholder="20600000000" 
-                    value={form.ruc} 
-                    onChange={(e) => setForm({ ...form, ruc: e.target.value })} 
-                    required 
-                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      className="form-control form-control--mono" 
+                      placeholder="20600000000" 
+                      value={form.ruc} 
+                      onChange={(e) => setForm({ ...form, ruc: e.target.value })} 
+                      required 
+                    />
+                    <button type="button" className="btn btn--secondary" onClick={simularSunat} title="Consultar RUC en SUNAT">
+                      <Search size={16} />
+                    </button>
+                  </div>
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ flex: 1 }}>
                   <label className="form-label form-label--required">Abreviatura Comercial</label>
                   <input 
                     type="text" 
@@ -293,14 +396,7 @@ export const EmpresasView = () => {
                   required 
                 />
               </div>
-            </>
-          )}
-
-          {modalStep === 2 && (
-            <>
-              <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', margin: '14px 0 10px 0' }}>
-                2. PARÁMETROS CONTABLES Y MONEDAS
-              </div>
+              
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Régimen Tributario</label>
@@ -312,6 +408,7 @@ export const EmpresasView = () => {
                     <option>Régimen General (29.5%)</option>
                     <option>Régimen MYPE Tributario</option>
                     <option>Régimen Especial (RER)</option>
+                    <option>Nuevo RUS</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -329,15 +426,15 @@ export const EmpresasView = () => {
             </>
           )}
 
-          {modalStep === 3 && (
+          {modalStep === 2 && (
             <>
               <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', margin: '14px 0 10px 0' }}>
-                3. INICIALIZACIÓN DEL CATÁLOGO DE CUENTAS
+                2. PLAN CONTABLE Y AUTOMATIZACIÓN
               </div>
 
               <div className="form-group">
-                <label className="form-label">Modo de Inicialización</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <label className="form-label">Modalidad de Plan Contable</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
                   <label className="form-checkbox" style={{ alignItems: 'flex-start' }}>
                     <input 
                       type="radio" 
@@ -406,6 +503,70 @@ export const EmpresasView = () => {
                     </div>
                   </label>
                 </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #e2e8f0', margin: '20px 0', paddingTop: '16px' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Settings size={14} /> Plantillas y Automatización Inicial
+                </label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                  <label className="form-checkbox">
+                    <input type="checkbox" checked={form.plantillasActivas.compras} onChange={(e) => setForm({...form, plantillasActivas: {...form.plantillasActivas, compras: e.target.checked}})} />
+                    <span className="form-checkbox-label">Activar Compras Mercadería</span>
+                  </label>
+                  <label className="form-checkbox">
+                    <input type="checkbox" checked={form.plantillasActivas.ventas} onChange={(e) => setForm({...form, plantillasActivas: {...form.plantillasActivas, ventas: e.target.checked}})} />
+                    <span className="form-checkbox-label">Activar Ventas Locales</span>
+                  </label>
+                  <label className="form-checkbox">
+                    <input type="checkbox" checked={form.plantillasActivas.servicios} onChange={(e) => setForm({...form, plantillasActivas: {...form.plantillasActivas, servicios: e.target.checked}})} />
+                    <span className="form-checkbox-label">Activar Serv. Terceros</span>
+                  </label>
+                  <label className="form-checkbox">
+                    <input type="checkbox" checked={form.autoAmarres} onChange={(e) => setForm({...form, autoAmarres: e.target.checked})} />
+                    <span className="form-checkbox-label">Amarres auto. (Clase 6 a 9/79)</span>
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
+
+          {modalStep === 3 && (
+            <>
+              <div style={{ fontWeight: 700, fontSize: '12px', color: '#475569', margin: '14px 0 10px 0' }}>
+                3. RESUMEN Y APERTURA
+              </div>
+
+              <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748B', fontSize: '12px' }}>Empresa:</span>
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{form.razonSocial || '(No definida)'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748B', fontSize: '12px' }}>RUC:</span>
+                  <span style={{ fontWeight: 600, fontSize: '12px', fontFamily: 'monospace' }}>{form.ruc || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748B', fontSize: '12px' }}>Régimen:</span>
+                  <span style={{ fontWeight: 500, fontSize: '12px' }}>{form.regimen}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748B', fontSize: '12px' }}>Catálogo:</span>
+                  <span style={{ fontWeight: 500, fontSize: '12px', color: '#2563EB' }}>
+                    {form.modoInicializacion === 'PCGE_2026' ? 'PCGE 2026 Oficial' : form.modoInicializacion === 'IMPORTAR_EXCEL' ? `Excel (${form.planPersonalizado.length} Ctas)` : 'En Blanco'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748B', fontSize: '12px' }}>Plantillas:</span>
+                  <span style={{ fontWeight: 500, fontSize: '12px' }}>
+                    {Object.values(form.plantillasActivas).filter(Boolean).length} activas
+                  </span>
+                </div>
+              </div>
+              
+              <div style={{ marginTop: '16px', fontSize: '12px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle size={14} /> Todo listo para aperturar el entorno operativo de la empresa.
               </div>
             </>
           )}
