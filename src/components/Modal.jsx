@@ -15,20 +15,25 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '68
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div 
         className="modal-content" 
         style={{ maxWidth }} 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2 className="modal-title">{title}</h2>
+          <div className="modal-title">
+            <span>{title}</span>
+          </div>
           <button 
+            type="button"
             className="btn btn--secondary btn--sm" 
-            style={{ padding: '4px', border: 'none', background: 'transparent' }} 
+            style={{ padding: '3px 6px', border: '1px solid #E2E8F0', background: '#F8FAFC' }} 
             onClick={onClose}
+            aria-label="Cerrar modal"
+            title="Cerrar [ESC]"
           >
-            <X size={18} />
+            <X size={14} />
           </button>
         </div>
         <div className="modal-body">

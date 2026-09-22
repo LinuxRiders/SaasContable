@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAccounting } from '../context/AccountingContext';
+import { useAccessManagement } from './gestion-usuarios-empresas/state/AccessManagementContext';
 import { 
+  LayoutDashboard,
   Building2, 
   BookOpen, 
   Landmark, 
@@ -16,11 +18,39 @@ import {
   CheckCircle2,
   Database,
   Table,
-  LogOut
+  LogOut,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeft,
+  Upload,
+  Inbox
 } from 'lucide-react';
+
+// Isotipo geométrico minimalista (Hexágono con trazo técnico de 2.5px)
+const HexagonIsotype = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2.5l7.5 4.33v8.66L12 19.82l-7.5-4.33V6.83L12 2.5z" />
+    <circle cx="12" cy="11.5" r="2.5" fill="currentColor" />
+  </svg>
+);
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
   const { periodoActivo, estadoPeriodo, empresaActiva, cerrarSesion } = useAccounting();
+  const { currentUser, getRole } = useAccessManagement();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const studyPermissions = getRole(currentUser?.studyRoleId)?.permissions || [];
+  const companyAssignment = currentUser?.assignments?.find((assignment) => assignment.companyId === empresaActiva?.id);
+  const companyPermissions = getRole(companyAssignment?.roleId)?.permissions || [];
+  
+  const canViewStudyUsers = currentUser?.allCompanies || studyPermissions.some((permission) =>
+    ['study.users.view', 'study.users.manage', 'study.users.invite'].includes(permission)
+  );
+  const canManageStudyRoles = currentUser?.allCompanies || studyPermissions.includes('study.roles.manage');
+  const canManageCompanyUsers = currentUser?.allCompanies || companyPermissions.includes('company.users.manage');
+  const canManageCompanyRoles = currentUser?.allCompanies || companyPermissions.includes('company.roles.manage');
 
   const handleLogout = () => {
     if (window.confirm("¿Está seguro que desea cerrar sesión?")) {
@@ -30,91 +60,140 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
 
   const globalNavItems = [
     {
-      group: "1. ADMINISTRACIÓN DEL ESTUDIO",
+      group: "ADMINISTRACIÓN DEL ESTUDIO",
+      code: "SEC-01",
       items: [
-        { id: "empresas", label: "Cartera de Empresas", shortcut: "[G1]", icon: Building2 },
-        { id: "usuarios", label: "Gestión de Usuarios", shortcut: "[G2]", icon: Users },
-        { id: "backups", label: "Copias de Seguridad", shortcut: "[G3]", icon: Database },
+        { id: "dashboard", label: "Dashboard General", shortcut: "[G00]", icon: LayoutDashboard },
+        { id: "empresas", label: "Cartera de Empresas", shortcut: "[G01]", icon: Building2 },
+        { id: "usuarios", label: "Gestión de Usuarios", shortcut: "[G02]", icon: Users, visible: canViewStudyUsers },
+        { id: "roles_estudio", label: "Roles y Permisos", shortcut: "[G03]", icon: ShieldCheck, visible: canManageStudyRoles },
+        { id: "backups", label: "Copias de Seguridad", shortcut: "[G04]", icon: Database },
       ]
     },
     {
-      group: "2. CONFIGURACIÓN MAESTRA",
+      group: "CONFIGURACIÓN MAESTRA",
+      code: "SEC-02",
       items: [
-        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", shortcut: "[G4]", icon: Table },
-        { id: "plantillas_globales", label: "Plantillas Globales", shortcut: "[G5]", icon: FileCode2 }
+        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", shortcut: "[G05]", icon: Table },
+        { id: "plantillas_globales", label: "Plantillas Globales", shortcut: "[G06]", icon: FileCode2 }
       ]
     }
   ];
 
   const companyNavItems = [
     {
-      group: "1. INGESTIÓN",
+      group: "INGESTIÓN Y APROBACIÓN",
+      code: "ING-01",
       items: [
-        { id: "ingestion", label: "Ingestión Manual", shortcut: "[I1]", icon: FileCode2 },
-        { id: "bandeja", label: "Bandeja de Entrada", shortcut: "[I2]", icon: Database },
-        { id: "pendientes", label: "Pendientes Aprob.", shortcut: "[I3]", icon: CheckCircle2 }
+        { id: "ingestion", label: "Ingestión Manual", shortcut: "[I01]", icon: Upload },
+        { id: "bandeja", label: "Bandeja de Entrada", shortcut: "[I02]", icon: Inbox },
+        { id: "pendientes", label: "Pendientes Aprob.", shortcut: "[I03]", icon: CheckCircle2 }
       ]
     },
     {
-      group: "2. OPERACIONES",
+      group: "TABLERO & OPERACIONES",
+      code: "MOD-01",
       items: [
-        { id: "compras", label: "Compras", shortcut: "[M1]", icon: ShoppingCart },
-        { id: "ventas", label: "Ventas", shortcut: "[M2]", icon: TrendingUp },
-        { id: "tesoreria", label: "Tesorería & Bancos", shortcut: "[M3]", icon: Wallet },
-        { id: "conciliacion", label: "Conciliación Bancaria", shortcut: "[M4]", icon: FileCheck }
+        { id: "dashboard", label: "Dashboard de la Empresa", shortcut: "[M00]", icon: LayoutDashboard },
+        { id: "compras", label: "Compras & Proveedores", shortcut: "[M01]", icon: ShoppingCart },
+        { id: "ventas", label: "Ventas & Clientes", shortcut: "[M02]", icon: TrendingUp },
+        { id: "tesoreria", label: "Tesorería & Cuentas", shortcut: "[M03]", icon: Wallet },
+        { id: "conciliacion", label: "Conciliación Bancaria", shortcut: "[M04]", icon: FileCheck }
       ]
     },
     {
-      group: "3. CONTABILIDAD Y LIBROS",
+      group: "CONTABILIDAD Y LIBROS",
+      code: "MOD-02",
       items: [
-        { id: "libros", label: "Libros (Diario / Mayor)", shortcut: "[M5]", icon: Scale },
-        { id: "liquidacion", label: "Liquidación de IGV", shortcut: "[M6]", icon: Receipt },
-        { id: "cierre", label: "Cierre de Ejercicio", shortcut: "[M7]", icon: LockKeyhole }
+        { id: "libros", label: "Libros (Diario / Mayor)", shortcut: "[M05]", icon: Scale },
+        { id: "liquidacion", label: "Liquidación de IGV", shortcut: "[M06]", icon: Receipt },
+        { id: "cierre", label: "Cierre de Ejercicio", shortcut: "[M07]", icon: LockKeyhole }
       ]
     },
     {
-      group: "4. CONFIGURACIÓN",
+      group: "CONFIGURACIÓN EMPRESA",
+      code: "CFG-01",
       items: [
-        { id: "plan", label: "Catálogo de Cuentas", shortcut: "[C1]", icon: BookOpen },
-        { id: "plantillas", label: "Plantillas de la Empresa", shortcut: "[C2]", icon: FileCode2 }
+        { id: "plan", label: "Catálogo de Cuentas", shortcut: "[C01]", icon: BookOpen },
+        { id: "plantillas", label: "Plantillas Contables", shortcut: "[C02]", icon: FileCode2 },
+        { id: "usuarios_empresa", label: "Usuarios de Empresa", shortcut: "[C03]", icon: Users, visible: canManageCompanyUsers },
+        { id: "roles_empresa", label: "Roles y Permisos", shortcut: "[C04]", icon: ShieldCheck, visible: canManageCompanyRoles }
       ]
     }
   ];
 
   const navItems = empresaActiva ? companyNavItems : globalNavItems;
 
+  const userInitials = (currentUser?.name || currentUser?.nombre || 'AD')
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+
+  const userRoleName = currentUser?.studyRoleId?.replace('role-', '').toUpperCase() || 'ADMIN';
+
   return (
-    <aside className="sidebar">
-      {/* BRAND */}
-      <div className="sidebar__header">
-        <div>
-          <div className="sidebar__brand-badge">[CONTABLE_OS v2.4]</div>
-          <div className="sidebar__brand-sub">SISTEMA INTEGRAL CONTABLE</div>
+    <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : 'sidebar--expanded'}`}>
+      {/* HEADER IDENTIDAD & TOGGLE (SIN COLISIÓN NI SUPERPOSICIÓN) */}
+      <div 
+        className="sidebar__header"
+        style={collapsed ? { 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: '8px', 
+          padding: '12px 6px',
+          minHeight: '80px'
+        } : {}}
+      >
+        <div className="sidebar__brand-container" style={collapsed ? { justifyContent: 'center' } : {}}>
+          <div className="sidebar__isotype" title="CONTABLE.OS">
+            <HexagonIsotype />
+          </div>
+          {!collapsed && (
+            <div className="sidebar__brand-info">
+              <div className="sidebar__brand-badge">CONTABLE.OS</div>
+              <div className="sidebar__brand-sub">SYS-VER::2.4.0-PROT</div>
+            </div>
+          )}
         </div>
+        <button 
+          className="sidebar__toggle-btn"
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? "Expandir menú (270px)" : "Contraer menú (72px)"}
+          aria-label="Toggle sidebar"
+        >
+          {collapsed ? <ChevronRight size={14} /> : <PanelLeftClose size={14} />}
+        </button>
       </div>
 
-      {/* PERIODO ACTIVO CARD (Solo visible si hay empresa) */}
-      {empresaActiva && (
+      {/* PERIODO ACTIVO (Visible si hay empresa seleccionada) */}
+      {empresaActiva && !collapsed && (
         <div className="sidebar__period-card">
           <div className="sidebar__period-title">PERÍODO FISCAL ACTIVO</div>
-          <div className="sidebar__period-val">{periodoActivo || 'N/A'}</div>
+          <div className="sidebar__period-val">{periodoActivo || '2026-01'}</div>
           <div className="sidebar__period-sub">
             <span style={{ 
               width: 6, height: 6, borderRadius: '50%', 
               backgroundColor: estadoPeriodo === 'ABIERTO' ? '#10B981' : '#EF4444', 
               display: 'inline-block' 
             }}></span>
-            Estado: {estadoPeriodo || 'ABIERTO'}
+            <span>ESTADO: {estadoPeriodo || 'ABIERTO'}</span>
           </div>
         </div>
       )}
 
-      {/* NAVEGACIÓN */}
+      {/* LISTA DE NAVEGACIÓN */}
       <nav className="sidebar__nav">
         {navItems.map((group, idx) => (
-          <div key={idx}>
-            <div className="sidebar__group-label">{group.group}</div>
-            {group.items.map(item => {
+          <div key={idx} style={{ marginBottom: collapsed ? '6px' : '8px' }}>
+            {!collapsed && (
+              <div className="sidebar__group-label">
+                <span>{group.group}</span>
+              </div>
+            )}
+            {group.items.filter((item) => item.visible !== false).map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -122,10 +201,15 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                   key={item.id}
                   className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''}`}
                   onClick={() => setActiveTab(item.id)}
+                  title={collapsed ? `${item.shortcut} ${item.label}` : undefined}
                 >
-                  <span className="sidebar__item-shortcut">{item.shortcut}</span>
-                  <Icon size={14} style={{ opacity: isActive ? 1 : 0.7 }} />
-                  <span>{item.label}</span>
+                  <Icon size={14} style={{ opacity: isActive ? 1 : 0.75, flexShrink: 0 }} />
+                  {!collapsed && (
+                    <>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                      <span className="sidebar__item-shortcut">{item.shortcut}</span>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -133,27 +217,43 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         ))}
       </nav>
 
-      {/* FOOTER STATUS */}
+      {/* PIE DEL MENÚ: USUARIO CONECTADO & SALIR */}
       <div className="sidebar__footer">
-        {!empresaActiva && (
-          <div 
-            className="sidebar__item" 
-            style={{ color: '#ef4444', marginBottom: '1rem' }}
-            onClick={handleLogout}
-          >
-            <span className="sidebar__item-shortcut">[SALIR]</span>
-            <LogOut size={14} />
-            <span>Cerrar Sesión</span>
+        <div className="sidebar__user-card" title={`${currentUser?.name || 'Administrador'} (${userRoleName})`}>
+          <div className="sidebar__user-avatar">
+            {userInitials}
           </div>
-        )}
-        <div className="sidebar__status-box">
-          <div className="sidebar__status-title">
-            <CheckCircle2 size={13} color="#10B981" />
-            STATUS: CUADRADO [✓]
-          </div>
-          <div className="sidebar__status-desc">
-            Sistema operativo y sincronizado
-          </div>
+          {!collapsed && (
+            <div className="sidebar__user-info" style={{ flex: 1 }}>
+              <div className="sidebar__user-name">{currentUser?.name || currentUser?.nombre || 'Admin Usuario'}</div>
+              <div className="sidebar__user-role">
+                <ShieldCheck size={11} color="#94A3B8" />
+                <span>ROL: {userRoleName}</span>
+              </div>
+            </div>
+          )}
+          {!collapsed && (
+            <button 
+              onClick={handleLogout}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94A3B8',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '4px',
+                transition: 'color 0.15s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+              title="Cerrar sesión"
+            >
+              <LogOut size={14} />
+            </button>
+          )}
         </div>
       </div>
     </aside>
