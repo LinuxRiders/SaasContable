@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { AccountingProvider } from './context/AccountingContext';
+import { AccessManagementProvider } from './components/gestion-usuarios-empresas/state/AccessManagementContext';
+import { DashboardGeneralProvider } from './context/DashboardGeneralContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { DashboardView } from './views/DashboardView';
 import { EmpresasView } from './views/EmpresasView';
 import { PlanContableView } from './views/PlanContableView';
 import { BancosView } from './views/BancosView';
@@ -17,24 +20,23 @@ import { LiquidacionIGVView } from './views/LiquidacionIGVView';
 import { CierreEjercicioView } from './views/CierreEjercicioView';
 import { BackupsView } from './views/BackupsView';
 import { TablasSunatView } from './views/TablasSunatView';
-
 import { LoginView } from './views/LoginView';
 import { useAccounting } from './context/AccountingContext';
-import { AccessManagementProvider } from './components/gestion-usuarios-empresas/state/AccessManagementContext';
 
 export function AppContent() {
   const { sesionUsuario, empresaActiva } = useAccounting();
-  const [activeTab, setActiveTab] = React.useState('empresas');
+  const [activeTab, setActiveTab] = React.useState('dashboard');
 
   React.useEffect(() => {
     if (empresaActiva) {
       setActiveTab('compras');
     } else {
-      setActiveTab('empresas');
+      setActiveTab('dashboard');
     }
   }, [empresaActiva]);
 
   const tabTitles = {
+    dashboard: "Dashboard Central & Gestión General",
     empresas: "Información de Compañías Usuarias (Figma 118-2)",
     plan: "Plan Contable General Empresarial (PCGE 2026)",
     bancos: "Catálogo de Cuentas Bancarias y Tesorería",
@@ -49,11 +51,16 @@ export function AppContent() {
     libros: "Libros Contables: Diario, Mayor Auxiliar y Balances",
     conciliacion: "Conciliación Bancaria y Detalle de Desembolsos",
     liquidacion: "Liquidación Mensual de IGV (SUNAT)",
-    cierre: "Cierre Contable Anual y Asientos de Refundición"
+    cierre: "Cierre Contable Anual y Asientos de Refundición",
+    backups: "Copias de Seguridad (Snapshots)",
+    tablas_sunat: "Tablas Maestras SUNAT",
+    plantillas_globales: "Plantillas Maestras Globales"
   };
 
   const renderView = () => {
     switch (activeTab) {
+      case 'dashboard':
+        return <DashboardView />;
       case 'empresas':
         return <EmpresasView />;
       case 'plan':
@@ -91,7 +98,7 @@ export function AppContent() {
       case 'plantillas_globales':
         return <PlantillasView />;
       default:
-        return <EmpresasView />;
+        return <DashboardView />;
     }
   };
 
@@ -100,13 +107,15 @@ export function AppContent() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="main-area">
-        <Header title={tabTitles[activeTab] || "Sistema Contable"} />
-        {renderView()}
+    <DashboardGeneralProvider setActiveTab={setActiveTab}>
+      <div className="app-layout">
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div className="main-area">
+          <Header title={tabTitles[activeTab] || "Sistema Contable"} />
+          {renderView()}
+        </div>
       </div>
-    </div>
+    </DashboardGeneralProvider>
   );
 }
 

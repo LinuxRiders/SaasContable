@@ -240,54 +240,93 @@ export const EmpresasView = () => {
         )}
       </div>
 
-      {/* GRID DE TARJETAS DE EMPRESAS (TASK-05) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+      {/* GRID DE TARJETAS DE EMPRESAS (CON ESPACIADO Y PADDING GENEROSO) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px', marginTop: '16px' }}>
         {filteredEmpresas.map((emp) => {
           const selections = getEmpresaSelections(emp);
 
           return (
-            <div key={emp.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ flex: 1, paddingRight: '1rem' }}>
-                  <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', color: 'var(--text-color)', lineHeight: 1.2 }}>
+            <div 
+              key={emp.id} 
+              className="wireframe-card" 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                padding: '22px 24px', 
+                margin: 0,
+                backgroundColor: 'var(--bg-surface)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-light)',
+                boxShadow: 'var(--shadow-xs)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div style={{ flex: 1, paddingRight: '12px' }}>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: 'var(--color-primary)', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
                     {emp.abreviatura || emp.razonSocial}
                   </h3>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px', lineHeight: 1.4 }}>
                     {emp.razonSocial}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                    <span className="badge badge--info">{emp.ruc}</span>
-                    <span className={`badge badge--${emp.estado === 'ACTIVA' ? 'success' : 'warning'}`}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    <span className="badge badge--neutral mono" style={{ fontSize: '11px', padding: '2px 7px' }}>
+                      RUC: {emp.ruc}
+                    </span>
+                    <span className={`badge ${emp.estado === 'ACTIVA' ? 'badge--info' : 'badge--neutral'}`} style={{ fontSize: '10.5px' }}>
                       {emp.estado}
                     </span>
                   </div>
                 </div>
-                <button className="btn btn--icon" title="Opciones de Empresa">
-                  <MoreVertical size={16} color="var(--text-secondary)" />
+                <button 
+                  className="btn btn--secondary btn--sm" 
+                  style={{ padding: '5px', border: '1px solid var(--border-light)', background: 'transparent' }} 
+                  title="Opciones de Empresa"
+                >
+                  <MoreVertical size={14} color="var(--text-muted)" />
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Régimen:</span> <span style={{ fontWeight: 500, color: 'var(--text-color)' }}>{emp.regimen}</span>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '8px', 
+                fontSize: '12px', 
+                color: 'var(--text-muted)', 
+                marginBottom: '18px',
+                padding: '12px 14px',
+                backgroundColor: 'var(--bg-subtle)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-light)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '600' }}>Régimen:</span> 
+                  <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>{emp.regimen}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Moneda:</span> <span style={{ fontWeight: 500, color: 'var(--text-color)' }}>{emp.monedaBase.split(' - ')[0]}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '600' }}>Moneda Principal:</span> 
+                  <span className="mono" style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{emp.monedaBase?.split(' - ')[0] || 'PEN'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Plan Asignado:</span> <span style={{ fontWeight: 500, color: 'var(--text-color)' }}>{emp.cuentasCount} Ctas</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '600' }}>Plan de Cuentas:</span> 
+                  <span className="mono" style={{ fontWeight: '700', color: 'var(--color-primary)' }}>{emp.cuentasCount || 120} Cuentas</span>
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', marginTop: 'auto' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Calendar size={14} /> Seleccionar Periodo
+              <div style={{ 
+                backgroundColor: '#FFFFFF', 
+                padding: '14px 16px', 
+                borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--border-medium)',
+                marginTop: 'auto' 
+              }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Calendar size={13} /> Seleccionar Período de Trabajo
                 </div>
                 
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                   <select 
-                    className="form-control" 
-                    style={{ flex: 1, padding: '0.4rem', fontSize: '0.85rem' }}
+                    className="form-control mono" 
+                    style={{ flex: 1, padding: '6px 8px', fontSize: '11.5px' }}
                     value={selections.ejercicio}
                     onChange={(e) => handlePeriodChange(emp.id, 'ejercicio', e.target.value)}
                   >
@@ -296,30 +335,33 @@ export const EmpresasView = () => {
                     ))}
                   </select>
                   <select 
-                    className="form-control" 
-                    style={{ flex: 2, padding: '0.4rem', fontSize: '0.85rem' }}
+                    className="form-control mono" 
+                    style={{ flex: 2, padding: '6px 8px', fontSize: '11.5px' }}
                     value={selections.periodo}
                     onChange={(e) => handlePeriodChange(emp.id, 'periodo', e.target.value)}
                   >
-                    {(emp.periodos || [{ nombrePeriodo: 'SETIEMBRE_2026' }])
+                    {(emp.periodos || [{ nombrePeriodo: 'ENERO_2026' }])
                       .filter(p => !selections.ejercicio || p.ejercicio === selections.ejercicio)
                       .map(p => (
-                      <option key={p.nombrePeriodo} value={p.nombrePeriodo}>{p.nombrePeriodo.split('_')[0]}</option>
+                      <option key={p.nombrePeriodo} value={p.nombrePeriodo}>{p.nombrePeriodo.replace('_', ' ')}</option>
                     ))}
                   </select>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: selections.estado === 'ABIERTO' ? '#10B981' : '#EF4444' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: selections.estado === 'ABIERTO' ? '#10B981' : '#EF4444' }}></span>
-                    {selections.estado}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '700' }} className="mono">
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: selections.estado === 'ABIERTO' ? '#10B981' : '#EF4444' }}></span>
+                    <span style={{ color: selections.estado === 'ABIERTO' ? '#0F172A' : '#64748B' }}>
+                      {selections.estado}
+                    </span>
                   </div>
                   <button 
-                    className="btn btn--primary" 
-                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                    className="btn btn--primary btn--sm" 
+                    style={{ padding: '6px 12px', fontSize: '11.5px' }}
                     onClick={() => handleIngresar(emp)}
                   >
-                    Ingresar <LogIn size={14} style={{ marginLeft: '4px' }} />
+                    <span>Ingresar</span> 
+                    <LogIn size={13} />
                   </button>
                 </div>
               </div>
