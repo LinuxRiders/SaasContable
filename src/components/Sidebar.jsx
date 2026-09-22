@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAccounting } from '../context/AccountingContext';
+import { useAccessManagement } from './gestion-usuarios-empresas/state/AccessManagementContext';
 import { 
   Building2, 
   BookOpen, 
@@ -16,11 +17,23 @@ import {
   CheckCircle2,
   Database,
   Table,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
   const { periodoActivo, estadoPeriodo, empresaActiva, cerrarSesion } = useAccounting();
+  const { currentUser, getRole } = useAccessManagement();
+
+  const studyPermissions = getRole(currentUser?.studyRoleId)?.permissions || [];
+  const companyAssignment = currentUser?.assignments.find((assignment) => assignment.companyId === empresaActiva?.id);
+  const companyPermissions = getRole(companyAssignment?.roleId)?.permissions || [];
+  const canViewStudyUsers = currentUser?.allCompanies || studyPermissions.some((permission) =>
+    ['study.users.view', 'study.users.manage', 'study.users.invite'].includes(permission)
+  );
+  const canManageStudyRoles = currentUser?.allCompanies || studyPermissions.includes('study.roles.manage');
+  const canManageCompanyUsers = currentUser?.allCompanies || companyPermissions.includes('company.users.manage');
+  const canManageCompanyRoles = currentUser?.allCompanies || companyPermissions.includes('company.roles.manage');
 
   const handleLogout = () => {
     if (window.confirm("¿Está seguro que desea cerrar sesión?")) {
@@ -33,15 +46,16 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       group: "1. ADMINISTRACIÓN DEL ESTUDIO",
       items: [
         { id: "empresas", label: "Cartera de Empresas", shortcut: "[G1]", icon: Building2 },
-        { id: "usuarios", label: "Gestión de Usuarios", shortcut: "[G2]", icon: Users },
-        { id: "backups", label: "Copias de Seguridad", shortcut: "[G3]", icon: Database },
+        { id: "usuarios", label: "Gestión de Usuarios", shortcut: "[G2]", icon: Users, visible: canViewStudyUsers },
+        { id: "roles_estudio", label: "Roles y Permisos", shortcut: "[G3]", icon: ShieldCheck, visible: canManageStudyRoles },
+        { id: "backups", label: "Copias de Seguridad", shortcut: "[G4]", icon: Database },
       ]
     },
     {
       group: "2. CONFIGURACIÓN MAESTRA",
       items: [
-        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", shortcut: "[G4]", icon: Table },
-        { id: "plantillas_globales", label: "Plantillas Globales", shortcut: "[G5]", icon: FileCode2 }
+        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", shortcut: "[G5]", icon: Table },
+        { id: "plantillas_globales", label: "Plantillas Globales", shortcut: "[G6]", icon: FileCode2 }
       ]
     }
   ];
@@ -68,7 +82,9 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       group: "3. CONFIGURACIÓN",
       items: [
         { id: "plan", label: "Catálogo de Cuentas", shortcut: "[C1]", icon: BookOpen },
-        { id: "plantillas", label: "Plantillas de la Empresa", shortcut: "[C2]", icon: FileCode2 }
+        { id: "plantillas", label: "Plantillas de la Empresa", shortcut: "[C2]", icon: FileCode2 },
+        { id: "usuarios_empresa", label: "Usuarios de la Empresa", shortcut: "[C3]", icon: Users, visible: canManageCompanyUsers },
+        { id: "roles_empresa", label: "Roles y Permisos", shortcut: "[C4]", icon: ShieldCheck, visible: canManageCompanyRoles }
       ]
     }
   ];
@@ -106,7 +122,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         {navItems.map((group, idx) => (
           <div key={idx}>
             <div className="sidebar__group-label">{group.group}</div>
-            {group.items.map(item => {
+            {group.items.filter((item) => item.visible !== false).map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (

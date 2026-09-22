@@ -7,6 +7,7 @@ import { PlanContableView } from './views/PlanContableView';
 import { BancosView } from './views/BancosView';
 import { PlantillasView } from './views/PlantillasView';
 import { UsuariosView } from './views/UsuariosView';
+import { RolesPermisosView } from './views/RolesPermisosView';
 import { ComprasView } from './views/ComprasView';
 import { VentasView } from './views/VentasView';
 import { TesoreriaView } from './views/TesoreriaView';
@@ -19,6 +20,7 @@ import { TablasSunatView } from './views/TablasSunatView';
 
 import { LoginView } from './views/LoginView';
 import { useAccounting } from './context/AccountingContext';
+import { AccessManagementProvider } from './components/gestion-usuarios-empresas/state/AccessManagementContext';
 
 export function AppContent() {
   const { sesionUsuario, empresaActiva } = useAccounting();
@@ -38,6 +40,9 @@ export function AppContent() {
     bancos: "Catálogo de Cuentas Bancarias y Tesorería",
     plantillas: "Plantillas de Automatización Contable",
     usuarios: "Usuarios del Estudio y Segregación de Funciones",
+    roles_estudio: "Roles y Permisos del Estudio",
+    usuarios_empresa: "Usuarios de la Empresa",
+    roles_empresa: "Roles y Permisos de la Empresa",
     compras: "Módulo de Compras (Gestión Proveedores y Cálculo IGV)",
     ventas: "Módulo de Ventas (Gestión Clientes y Débito Fiscal)",
     tesoreria: "Tesorería — Gestión de Cobros, Pagos y Multi-Banco",
@@ -58,7 +63,13 @@ export function AppContent() {
       case 'plantillas':
         return <PlantillasView />;
       case 'usuarios':
-        return <UsuariosView />;
+        return <UsuariosView scope="STUDY" />;
+      case 'roles_estudio':
+        return <RolesPermisosView scope="STUDY" />;
+      case 'usuarios_empresa':
+        return <UsuariosView scope="COMPANY" />;
+      case 'roles_empresa':
+        return <RolesPermisosView scope="COMPANY" />;
       case 'compras':
         return <ComprasView />;
       case 'ventas':
@@ -102,7 +113,9 @@ export function AppContent() {
 export default function App() {
   return (
     <AccountingProvider>
-      <AppContent />
+      <AccessManagementProvider>
+        <AppContent />
+      </AccessManagementProvider>
     </AccountingProvider>
   );
 }

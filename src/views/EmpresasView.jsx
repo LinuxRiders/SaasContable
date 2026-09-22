@@ -4,9 +4,11 @@ import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { Building2, Plus, CheckCircle, Search, ArrowRight, ArrowLeft, MoreVertical, LogIn, Calendar, Settings } from 'lucide-react';
 import { parseExcelPlanContable } from '../utils/excelParser';
+import { useAccessManagement } from '../components/gestion-usuarios-empresas/state/AccessManagementContext';
 
 export const EmpresasView = () => {
   const { empresas, agregarEmpresa, seleccionarEmpresaYPeriodo } = useAccounting();
+  const { currentUser, getRole, getAccessibleCompanyIds } = useAccessManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState(1);
@@ -167,7 +169,15 @@ export const EmpresasView = () => {
     });
   };
 
-  const filteredEmpresas = empresas.filter(emp => 
+  const accessibleCompanyIds = getAccessibleCompanyIds();
+  const visibleEmpresas = accessibleCompanyIds === null
+    ? empresas
+    : empresas.filter((empresa) => accessibleCompanyIds.includes(empresa.id));
+  const canCreateCompany = Boolean(
+    currentUser?.allCompanies || getRole(currentUser?.studyRoleId)?.permissions.includes('study.companies.manage')
+  );
+
+  const filteredEmpresas = visibleEmpresas.filter(emp =>
     emp.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.ruc.includes(searchTerm) ||
     emp.regimen.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -180,14 +190,14 @@ export const EmpresasView = () => {
       <div className="metrics-grid">
         <MetricCard 
           title="Total Empresas" 
-          value={empresas.length} 
+          value={visibleEmpresas.length}
           subtext="Compañías registradas en el estudio" 
-          badgeText={`${empresas.filter(e => e.estado === 'ACTIVA').length} Activas`} 
+          badgeText={`${visibleEmpresas.filter(e => e.estado === 'ACTIVA').length} Activas`}
           badgeType="success" 
         />
         <MetricCard 
           title="Régimen MYPE / General" 
-          value={empresas.filter(e => e.regimen.includes('General') || e.regimen.includes('MYPE')).length} 
+          value={visibleEmpresas.filter(e => e.regimen.includes('General') || e.regimen.includes('MYPE')).length}
           subtext="Contabilidad Completa" 
           badgeText="Mayoría" 
           badgeType="info" 
@@ -201,7 +211,7 @@ export const EmpresasView = () => {
         />
         <MetricCard 
           title="Periodos Activos" 
-          value={empresas.filter(e => e.periodos?.some(p => p.estado === 'ABIERTO')).length} 
+          value={visibleEmpresas.filter(e => e.periodos?.some(p => p.estado === 'ABIERTO')).length}
           subtext="Empresas con meses abiertos" 
           badgeText="Operativas" 
           badgeType="warning" 
@@ -222,10 +232,12 @@ export const EmpresasView = () => {
 
         <div className="toolbar__spacer"></div>
 
-        <button className="btn btn--primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={14} /> Nueva Empresa
-          <span className="btn__badge">F2</span>
-        </button>
+        {canCreateCompany && (
+          <button className="btn btn--primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={14} /> Nueva Empresa
+            <span className="btn__badge">F2</span>
+          </button>
+        )}
       </div>
 
       {/* GRID DE TARJETAS DE EMPRESAS (TASK-05) */}
@@ -315,6 +327,12 @@ export const EmpresasView = () => {
           );
         })}
       </div>
+
+      {filteredEmpresas.length === 0 && (
+        <div className="empty-state">
+          No tienes empresas asignadas con los filtros actuales.
+        </div>
+      )}
 
       {/* MODAL: INGRESAR NUEVA COMPAÑÍA USUARIA (ASISTENTE 3 PASOS) */}
       <Modal 
