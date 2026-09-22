@@ -48,7 +48,15 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
 
   const companyNavItems = [
     {
-      group: "1. OPERACIONES",
+      group: "1. INGESTIÓN",
+      items: [
+        { id: "ingestion", label: "Ingestión Manual", shortcut: "[I1]", icon: FileCode2 },
+        { id: "bandeja", label: "Bandeja de Entrada", shortcut: "[I2]", icon: Database },
+        { id: "pendientes", label: "Pendientes Aprob.", shortcut: "[I3]", icon: CheckCircle2 }
+      ]
+    },
+    {
+      group: "2. OPERACIONES",
       items: [
         { id: "compras", label: "Compras", shortcut: "[M1]", icon: ShoppingCart },
         { id: "ventas", label: "Ventas", shortcut: "[M2]", icon: TrendingUp },
@@ -57,7 +65,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       ]
     },
     {
-      group: "2. CONTABILIDAD Y LIBROS",
+      group: "3. CONTABILIDAD Y LIBROS",
       items: [
         { id: "libros", label: "Libros (Diario / Mayor)", shortcut: "[M5]", icon: Scale },
         { id: "liquidacion", label: "Liquidación de IGV", shortcut: "[M6]", icon: Receipt },
@@ -65,7 +73,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       ]
     },
     {
-      group: "3. CONFIGURACIÓN",
+      group: "4. CONFIGURACIÓN",
       items: [
         { id: "plan", label: "Catálogo de Cuentas", shortcut: "[C1]", icon: BookOpen },
         { id: "plantillas", label: "Plantillas de la Empresa", shortcut: "[C2]", icon: FileCode2 }

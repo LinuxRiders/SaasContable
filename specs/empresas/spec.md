@@ -1,4 +1,4 @@
-﻿# SPEC: Gestión Integral de Empresas, Sesión y Navegación Multi-Tenant
+# SPEC: Gestión Integral de Empresas, Sesión y Navegación Multi-Tenant
 
 > **Módulo:** Empresas / Flujo de Acceso Global del Estudio Contable
 > **Documentos de Referencia:** `ContextoProyecto/03-PRD.md` (RF-101 a RF-108), `docs/constitution.md`, Figma `118-2`, `118-369`, `118-868`, `153-2`, `154-2`
@@ -8,6 +8,7 @@
 ## 1. Visión General del Flujo
 
 El sistema adopta una arquitectura jerárquica de 3 niveles:
+
 1. **Nivel 0 (Acceso / Login):** Autenticación en el servidor del Estudio Contable.
 2. **Nivel 1 (Panel General Global):** Entorno de administración del Estudio (sin empresa activa aún). Permite gestionar clientes, usuarios, copias de seguridad, tablas SUNAT, plantillas maestras y seleccionar con qué empresa y periodo operar.
 3. **Nivel 2 (Panel de la Empresa Seleccionada):** Contexto operativo bloqueado a la empresa y periodo activo. Da acceso a compras, ventas, tesorería, conciliación, libros, liquidación IGV, catálogo de cuentas y plantillas de automatización propias.
@@ -54,6 +55,7 @@ El sistema adopta una arquitectura jerárquica de 3 niveles:
 ```
 
 ### 🔒 Pantalla 0: Login (Acceso Seguro)
+
 - **Propósito:** Identificación del usuario en el entorno del estudio contable.
 - **Campos:**
   - `usuario`: Nombre de usuario (ej. `admin_pedro` o `contador_maria`).
@@ -66,9 +68,11 @@ El sistema adopta una arquitectura jerárquica de 3 niveles:
   - No hay empresa activa seleccionada en este punto (`empresaActiva: null`).
 
 ### 🌐 Pantalla 1: Panel General Global (Post-Login)
+
 Esta es la vista inicial tras iniciar sesión. El usuario está en el contexto del Estudio Contable, con acceso a herramientas administrativas y al selector de empresas.
 
 #### 1. Barra Lateral Izquierda (Herramientas del Estudio)
+
 - 🏢 **Cartera de Empresas:** Vista para administrar el directorio completo de empresas clientes (listar, buscar, filtrar por régimen, crear nueva, editar datos fiscales, archivar).
 - 👥 **Gestión de Usuarios del Estudio:** Vista de administración de usuarios internos del estudio, roles (`Maker`, `Checker`, `Admin`, `Auditor`) y asignación de permisos sobre qué empresas puede operar cada usuario.
 - 💾 **Copias de Seguridad (Backup):**
@@ -80,6 +84,7 @@ Esta es la vista inicial tras iniciar sesión. El usuario está en el contexto d
 - 🚪 **Cerrar Sesión:** Cierra la sesión activa y retorna a la Pantalla 0 (Login).
 
 #### 2. Centro de la Pantalla: Selector Central de Empresas
+
 - **Buscador predictivo:** Filtro en tiempo real por RUC, Razón Social o Régimen Tributario.
 - **Tarjetas de Empresa:** Cada tarjeta muestra:
   - Razón Social y Nombre Comercial (Abreviatura).
@@ -93,7 +98,9 @@ Esta es la vista inicial tras iniciar sesión. El usuario está en el contexto d
   - **Acciones Rápidas:** Botones para editar ficha, ver catálogo de cuentas, o ver plantillas asignadas a esa empresa.
 
 ### 🔄 La Transición de Contexto (Locking de Empresa)
+
 Al presionar **"Ingresar al Periodo"**:
+
 1. El estado global fija:
    ```javascript
    {
@@ -112,7 +119,9 @@ Al presionar **"Ingresar al Periodo"**:
    - Al pulsar "Salir de Empresa", se limpia `empresaActiva: null` y se regresa de inmediato al Panel Global (Pantalla 1).
 
 ### 🏢 Pantalla 2: Panel de la Empresa Seleccionada
+
 Al ingresar, el usuario dispone de los módulos operativos vinculados estrictamente a los datos de la empresa y periodo activo:
+
 - 🛒 **Módulo de Compras:** Registro de facturas de compras, notas de crédito/débito, crédito fiscal IGV y generación de asientos automáticos.
 - 💰 **Módulo de Ventas:** Registro de comprobantes de pago emitidos, cuentas por cobrar, débito fiscal IGV.
 - 🏦 **Módulo de Tesorería:** Catálogo de cuentas bancarias y cajas propias de la empresa, ingresos, egresos y control de saldos.
@@ -138,41 +147,41 @@ export interface SesionEstudio {
 }
 
 export interface PeriodoContable {
-  ejercicio: string;             // ej. "2026"
-  mes: number;                   // 1 a 12 (o 13 para Cierre)
-  nombrePeriodo: string;         // ej. "SETIEMBRE_2026"
+  ejercicio: string; // ej. "2026"
+  mes: number; // 1 a 12 (o 13 para Cierre)
+  nombrePeriodo: string; // ej. "SETIEMBRE_2026"
   estado: "ABIERTO" | "CERRADO";
   fechaCierre?: string;
   cerradoPor?: string;
 }
 
 export interface Empresa {
-  id: string;                      // Identificador único (ej. "EMP-01")
-  ruc: string;                    // RUC de 11 dígitos
-  razonSocial: string;            // Razón social oficial SUNAT
-  nombreComercial: string;        // Nombre comercial
-  abreviatura: string;            // Nombre corto para pestañas
+  id: string; // Identificador único (ej. "EMP-01")
+  ruc: string; // RUC de 11 dígitos
+  razonSocial: string; // Razón social oficial SUNAT
+  nombreComercial: string; // Nombre comercial
+  abreviatura: string; // Nombre corto para pestañas
   regimenTributario: RegimenTributario;
-  monedaBase: "PEN" | "USD";      // Moneda funcional principal
+  monedaBase: "PEN" | "USD"; // Moneda funcional principal
   monedaSecundaria: "USD" | "PEN";
-  ejercicioInicial: string;       // ej. "2026"
-  
+  ejercicioInicial: string; // ej. "2026"
+
   // Periodos y Ejercicios
   ejerciciosDisponibles: string[]; // ["2026", "2025", "2024"]
-  periodoActivo: string;          // ej. "SETIEMBRE_2026"
+  periodoActivo: string; // ej. "SETIEMBRE_2026"
   periodos: PeriodoContable[];
 
   // Plan Contable y Catálogo
   planAsignadoTipo: "PCGE_2026" | "IMPORTAR_EXCEL" | "EN_BLANCO";
-  nombrePlan: string;             // Ej. "PCGE Oficial 2026"
-  digitosRegistro: number;        // Nivel analítico (ej. 7)
+  nombrePlan: string; // Ej. "PCGE Oficial 2026"
+  digitosRegistro: number; // Nivel analítico (ej. 7)
   totalCuentasActivas: number;
 
   // Plantillas de Automatización Asignadas
   plantillasActivasIds: string[]; // IDs de plantillas aplicables a la empresa
 
   // Parámetros y Automatizaciones Contables (Figma 118-868)
-  cierreAutomaticoDestino: boolean;  // Clase 6 a 9/79 automático
+  cierreAutomaticoDestino: boolean; // Clase 6 a 9/79 automático
   validarRucSunatEnLinea: boolean;
   diferenciaCambioAutomatica: boolean;
   bloquearVouchersPeriodoCerrado: boolean;
@@ -223,9 +232,9 @@ export type RegimenTributario =
     - Plantillas de automatización iniciales: activación de plantillas para compras de mercadería, servicios y ventas.
     - Switches de automatización (Amarres 6 a 9/79 automáticos, validación RUC, diferencia de cambio).
   - **Paso 3 (Confirmación):** Resumen visual de la configuración y botón **"Aperturar Empresa"**.
-- **RF-106 (Gestión de Plantillas de Automatización):**
-  - En Modo Global: Administrar el banco maestro de plantillas aplicables a todo el estudio.
-  - En Modo Empresa: Seleccionar cuáles plantillas maestras están activas para esa empresa y configurar cuentas contables específicas para su giro de negocio.
+- **RF-106 (Gestión de Plantillas de Automatización):** _(Implementado por `specs/001-ingestion-comprobantes`)_
+  - En Modo Global: Administrar el banco maestro de plantillas aplicables a todo el estudio (`PlantillasGlobalesView`).
+  - En Modo Empresa: Seleccionar cuáles plantillas maestras están activas para esa empresa y verificar compatibilidad con el catálogo (`PlantillasEmpresaView`).
 - **RF-107 (Copias de Seguridad y Respaldo):**
   - Exportar base de datos completa a archivo JSON descargable.
   - Importar archivo de respaldo para restaurar estado.

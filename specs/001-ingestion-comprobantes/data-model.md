@@ -92,7 +92,8 @@ Colección `journalEntries`.
 | `batchId` | UUID | |
 | `state` | enum | `DRAFT` \| `PENDING_INPUT` \| `PENDING_APPROVAL` \| `CANCELLED` (ver §8) |
 | `operationType` | `"COMPRA"` \| `"VENTA"` | |
-| `templateId` / `templateVersion` | string / int | Versión exacta usada (RD-10) |
+| `templateId` / `templateVersion` | string / int | Versión exacta usada (RD-10). Al recalcular se actualiza a la versión activa vigente (R-24) |
+| `appliedRules` | `{ scope: "DOCUMENT"\|"LINE", ruleId, ruleName, lineNo? }[]` | Reglas que aplicaron (CA-20.4) |
 | `issueDate` | date | Copiada del documento |
 | `accountingPeriod` | `"YYYY-MM"` | Derivado de `issueDate` |
 | `currency` | `"PEN"` \| `"USD"` | Moneda original |
@@ -116,12 +117,14 @@ conservar el orden de presentación; `debits` y `credits` se obtienen filtrando.
 |---|---|---|
 | `lineNo` | int | Orden |
 | `side` | `"D"` \| `"H"` | Debe / Haber |
-| `accountCode` | string | Debe existir en el plan contable (motivo `ACCOUNT_NOT_FOUND`) |
+| `accountCode` | string | Debe existir en el catálogo de la empresa (`ACCOUNT_NOT_FOUND`) y ser de uso (`ACCOUNT_NOT_POSTABLE`) |
 | `description` | string | |
-| `costCenter` | string \| null | Obligatorio en las líneas de gasto y destino si la plantilla lo exige |
+| `costCenter` | string \| null | Obligatorio si la cuenta de la línea lo exige, o si la plantilla lo exige y la línea es de gasto o destino (`MISSING_COST_CENTER`). Prioridad: el de la regla que aplicó, el por defecto de la plantilla y luego el `amarre3` de la cuenta base (CA-08.4, R-16) |
 | `originalAmountCents` | int \| null | Monto en la moneda original (null si es PEN) |
 | `functionalAmountCents` | int | Monto en PEN, > 0 |
 | `role` | enum | `BASE` \| `TAX` \| `COUNTERPART` \| `DEST_DEBIT` \| `DEST_CREDIT` |
+| `ruleId` | string \| null | Regla que decidió la línea; `null` si se usó el valor por defecto (CA-20.4) |
+| `sourceLineNos` | int[] | Líneas del documento que originaron la línea del asiento (después de agrupar, CA-20.3) |
 
 **PendingReason**: códigos estables con texto en español (RF-09):
 
@@ -132,42 +135,141 @@ conservar el orden de presentación; `debits` y `credits` se obtienen filtrando.
 | `PERIOD_CLOSED` | Periodo cerrado o no abierto | revalidar, cancelar |
 | `TEMPLATE_MISMATCH` | Plantilla no corresponde | cambiar plantilla, cancelar |
 | `MISSING_COST_CENTER` | Falta centro de costo | completar, cancelar |
-| `ACCOUNT_NOT_FOUND` | Cuenta inexistente | cambiar plantilla, cancelar |
+| `ACCOUNT_NOT_FOUND` | Cuenta inexistente en el catálogo de la empresa | cambiar plantilla, cancelar |
+| `ACCOUNT_NOT_POSTABLE` | Cuenta no imputable (no es de uso U) | cambiar plantilla, cancelar |
 | `NO_FX_RATE` | Sin tipo de cambio | revalidar, cancelar |
+| `TEMPLATE_INACTIVE` | Plantilla no activa (sin versión activa o desactivada para la empresa) | cambiar plantilla, cancelar |
 
 Las acciones permitidas sobre un asiento son la **intersección** de las acciones de todos sus
 motivos, más "cancelar", que siempre está disponible. Por ejemplo, un asiento con
 `INCONSISTENT_AMOUNTS` solo puede cancelarse, aunque tenga otros motivos.
 
-## 4. TemplateVersion — Plantilla contable · RF-08
+## 4. Plantillas con reglas · RF-08, RF-19 a RF-23, RD-10
 
-Colección `templates` (por empresa). Sembrada y de solo lectura en esta funcionalidad (R-11).
+Diseño en research R-20 a R-24. Colección **global** `templates` (banco de plantillas) y
+colección **por empresa** `templateActivations`.
+
+### 4.1 Template
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `templateId` | string | Por ejemplo, `PL-02` |
-| `version` | int | `1` |
-| `code`, `name` | string | |
-| `operationType` | `"COMPRA"` \| `"VENTA"` | Para detectar `TEMPLATE_MISMATCH` |
-| `baseAccount`, `taxAccount`, `counterpartAccount` | string | Cuentas de la plantilla |
-| `appliesIgv` | bool | |
-| `requiresCostCenter` | bool | |
-| `defaultCostCenter` | string \| null | |
-| `isActive` | bool | |
-| `usageCount` | int | Asientos generados con esta versión (SDD §13.3) |
+| `templateId` | string | PK estable, por ejemplo `PL-02`; las plantillas nuevas usan `PL-` y un correlativo |
+| `code` | string | Único en el banco, mayúsculas y guion bajo |
+| `name` | string | Obligatorio |
+| `operationType` | `"COMPRA"` \| `"VENTA"` | No cambia entre versiones; se usa para `TEMPLATE_MISMATCH` |
+| `createdBy` / `createdAt` | | Admin que la creó |
+| `retiredAt` | ISO datetime \| null | Retirada sin reemplazo (CA-22.5) |
+| `versions` | `TemplateVersion[]` | Al menos 1 |
 
-Unicidad: `(tenantId, templateId, version)`.
+### 4.2 TemplateVersion
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| `version` | int | 1, 2, 3…; único dentro de la plantilla |
+| `status` | `"DRAFT"` \| `"ACTIVE"` \| `"RETIRED"` | Como máximo una `ACTIVE` y un `DRAFT` por plantilla (CA-21.4) |
+| `basedOnVersion` | int \| null | Versión de la que se copió (CA-22.2) |
+| `defaults` | object | `{ baseAccount, taxAccount, counterpartAccount, appliesIgv, requiresCostCenter, defaultCostCenter }`; cuentas obligatorias |
+| `documentRules` | `Rule[]` | Se evalúan una vez por comprobante (CA-19.2) |
+| `lineRules` | `Rule[]` | Se evalúan por línea |
+| `testCases` | `TestCase[]` | Al menos 1 para activar (CA-21.3) |
+| `lastTestRun` | object \| null | `{ at, by, allPassed, uncoveredRuleIds[], results: { caseId, passed, balanced, accountErrors[], appliedRuleIds[], actualLines[] }[] }` |
+| `createdBy` / `createdAt` / `updatedAt` | | |
+| `activatedBy` / `activatedAt` | | Solo `ACTIVE` y `RETIRED` |
+| `diffFromPrevious` | string[] \| null | Resumen legible calculado al activar (CA-22.3) |
+| `usageCount` | int | Asientos generados con esta versión |
+
+**Reglas de estado**:
+- Solo un `DRAFT` se edita o elimina (CA-22.1).
+- "Editar" una versión `ACTIVE` o `RETIRED` crea un `DRAFT` con `version = max + 1` (CA-22.2).
+- Activar un `DRAFT` exige que `lastTestRun` sea posterior a `updatedAt`, con `allPassed`,
+  `uncoveredRuleIds` vacío, al menos un caso y todas las cuentas válidas en el PCGE semilla.
+  Si falta algo → `TEMPLATE_NOT_READY`. Al activar, la versión `ACTIVE` anterior pasa a
+  `RETIRED` (CA-21.3, CA-22.3).
+
+### 4.3 Rule, Condition y Action
+
+| Elemento | Forma | Regla de validación (CA-19.5) |
+|---|---|---|
+| `Rule` | `{ ruleId, name, priority, when, then }` | `name` obligatorio; `priority` entero ≥ 1 y único dentro de su grupo |
+| `Condition` (grupo) | `{ op: "and"\|"or", args: Condition[] }` | Al menos 2 `args` |
+| `Condition` (negación) | `{ op: "not", arg: Condition }` | |
+| `Condition` (comparación) | `{ op, field, value }` | `op` ∈ `contains`, `startsWith`, `equals`, `gt`, `gte`, `lt`, `lte`, `between`, `in`; `field` ∈ la lista de R-20; `value` no vacío y del tipo del campo; `between` = `[min, max]` con min ≤ max; las reglas de comprobante no admiten campos `line.*` |
+| `Action` de comprobante | `{ taxAccount?, counterpartAccount?, defaultCostCenter?, tags? }` | Al menos un campo |
+| `Action` de línea | `{ baseAccount?, costCenter?, tags? }` o `{ split: SplitPart[] }` | Al menos un campo; `split` excluye `baseAccount` y `costCenter` |
+| `SplitPart` | `{ account, costCenter?, basisPoints }` | Al menos 2 partes; `basisPoints` enteros > 0 que suman exactamente 10000 |
+| `tags` | `Record<string,string>` | Claves y valores no vacíos |
+
+### 4.4 TestCase
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| `caseId` / `name` | string | |
+| `document` | object | Documento estándar en PEN: `{ issuer, receiver, issueDate, lines[{ description, amountCents, taxCode }], taxableBaseCents, exemptBaseCents, igvCents, totalCents }`; `operationType` = el de la plantilla |
+| `expectedLines` | `{ side, accountCode, costCenter, functionalAmountCents }[]` | Se comparan sin importar el orden; incluye los destinos (amarres) del PCGE |
+
+### 4.5 TemplateActivation (por empresa) · RF-23
+
+Colección `contableos:v1:<empresaId>:templateActivations`:
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| `templateId` | string | FK → Template |
+| `active` | bool | |
+| `activatedBy` / `activatedAt` | | Último cambio |
+| `accountWarnings` | `{ accountCode, problem: "NOT_FOUND"\|"NOT_POSTABLE" }[]` | Calculadas contra el catálogo de la empresa al activar (CA-23.2); se recalculan al listar |
+
+- **Migración perezosa** (CA-23.3): si la colección no existe, se crea desde
+  `empresa.plantillasActivasIds` con el mapeo de research R-11.
+- **Plantillas ofrecidas al Maker** (CA-01.2b): las de `active = true` cuya plantilla tiene una
+  versión `ACTIVE` y no está retirada.
+
+### 4.6 Semilla (research R-11)
+
+PL-01 a PL-06 como versión 1 `ACTIVE`, sin reglas, con un caso cada una. PL-07 "Servicios
+varios con reglas" como versión 1 `ACTIVE`, con 3 reglas de línea ("FLETE", "LUZ o AGUA" y
+prorrateo "SEGURO") y un caso por regla.
 
 ## 5. FxRate — Tipo de cambio · RF-07
 
 Colección global `fxRates`: `{ currency: "USD", date, rateMilli, kind: "VENTA" }`. Solo lectura.
 Las reglas de resolución están en R-12.
 
-## 6. AccountingPeriod — Periodo · RF-09
+## 6. Datos existentes que la ingestión lee (y ahora se persisten)
 
-Colección `periods` (por empresa): `{ period: "YYYY-MM", status: "OPEN"|"CLOSED" }`. Todo
-periodo que no esté en la colección cuenta como "no abierto". Semilla: todos los meses hasta
-2026-08 `CLOSED`, 2026-09 `OPEN`.
+### 6.1 Empresa y PeriodoContable · RF-09, CA-09.4, CA-09.5
+
+Colección global `empresas`, que antes vivía solo en memoria en el `AccountingContext` (R-15).
+Conserva la forma existente (`src/types/accounting.d.ts`). Campos que usa la ingestión:
+
+| Campo | Uso |
+|---|---|
+| `id` | `tenantId` |
+| `ruc` | Pertenencia del comprobante (RF-06) |
+| `periodos[]` | `{ ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO"\|"CERRADO" }` |
+| `plantillasActivasIds[]` | Fuente de las activaciones iniciales de plantillas (CA-23.3, §4.5) |
+
+- **Periodo de un asiento**: `accountingPeriod = "YYYY-MM"` de `issueDate`. Se busca
+  `periodos[]` con `ejercicio = YYYY` y `mes = MM`. Si falta o está `CERRADO` →
+  `PERIOD_CLOSED`.
+- **Periodo activo**: `ctx.activePeriod = { ejercicio, nombrePeriodo }`. Si está `CERRADO` →
+  toda escritura responde `PERIOD_READ_ONLY` (CA-09.5).
+- Semilla: `mockEmpresas` (por ejemplo, empresa 01: 2026-08 `CERRADO` y 2026-09 `ABIERTO`).
+
+### 6.2 Cuenta del catálogo · CA-08.5, RF-09
+
+Colección `contableos:v1:<empresaId>:chartOfAccounts` (antes `planesPorEmpresa[empresaId]` en
+memoria; R-10). Conserva la forma `CuentaContable` existente. La ingestión la lee a través del
+adaptador de R-16:
+
+| Campo del dominio | Origen |
+|---|---|
+| `code` | `codigo` |
+| `isPostable` | `esCuentaU` |
+| `requiresCostCenter` | `requiereCC` o `requiereCentroCostos` |
+| `defaultCostCenter` | `amarre3` (si no está vacío) |
+| `destDebit` / `destCredit` | `amarre1` / `amarre2` (solo si existen ambos) |
+
+Semilla: `mockPlanContable` por empresa, que ahora incluye `659` y `6591101` (R-11) y `61`, `611` y `6111101` (R-19).
 
 ## 7. Otras entidades
 
@@ -185,23 +287,30 @@ Colección `batches`.
 | `summary` | object | `{ received, accepted, duplicates, failed, rejected, pendingInput, pendingApproval }` (CA-01.4) |
 | `items` | array | `{ rawPayloadId, fileName, outcome, journalEntryId? }` |
 
-### AuditEvent — Evento de auditoría · RF-17
+### AuditEvent — Evento de auditoría · RF-17, CA-23.4
 
-Colección `auditLog`. **Append-only.**
+Colección `auditLog` por empresa y `contableos:v1:global:auditLog` para las operaciones del
+banco de plantillas (`tenantId = "global"`). **Append-only.**
 
 | Campo | Tipo |
 |---|---|
 | `id` | UUID |
 | `tenantId`, `traceId` | |
 | `at` | ISO datetime |
-| `userId`, `role` | Actor. `SYSTEM` para los pasos automáticos del pipeline |
-| `action` | enum: `RAW_RECEIVED`, `DUPLICATE_DETECTED`, `PARSE_FAILED`, `REJECTED_NOT_TENANT`, `DOCUMENT_CANONICALIZED`, `DRAFT_CREATED`, `SENT_TO_STAGING`, `STAGING_UPDATED`, `TEMPLATE_CHANGED`, `REVALIDATED`, `MOVED_TO_PENDING_APPROVAL`, `ENTRY_CANCELLED`, `ACTION_DENIED`, `INVALID_TRANSITION`, `CONFLICT`, `DEMO_RESET` |
+| `userId`, `role` | Actor, tomado de la sesión del login (R-13). `SYSTEM` para los pasos automáticos del pipeline |
+| `action` | enum: `RAW_RECEIVED`, `DUPLICATE_DETECTED`, `PARSE_FAILED`, `REJECTED_NOT_TENANT`, `DOCUMENT_CANONICALIZED`, `DRAFT_CREATED`, `SENT_TO_STAGING`, `STAGING_UPDATED`, `TEMPLATE_CHANGED`, `REVALIDATED`, `MOVED_TO_PENDING_APPROVAL`, `ENTRY_CANCELLED`, `ACTION_DENIED`, `INVALID_TRANSITION`, `CONFLICT`, `DEMO_RESET`, `TEMPLATE_VERSION_CHANGED`; y del banco de plantillas: `TEMPLATE_CREATED`, `TEMPLATE_DRAFT_CREATED`, `TEMPLATE_DRAFT_UPDATED`, `TEMPLATE_DRAFT_DELETED`, `TEMPLATE_TESTS_RUN`, `TEMPLATE_VERSION_ACTIVATED`, `TEMPLATE_RETIRED`, `TEMPLATE_COMPANY_ACTIVATED`, `TEMPLATE_COMPANY_DEACTIVATED` |
 | `entityType` / `entityId` | Objeto afectado |
 | `detail` | object | Datos relevantes: motivos, antes y después, justificación |
 
 ### DemoSettings (global) · RF-18
 
-`{ fxServiceDown: bool, latencyMs: int, perItemLatencyMs: int, session: { userId } }`.
+`{ fxServiceDown: bool, latencyMs: int, perItemLatencyMs: int }`.
+
+### Session (global) · R-13
+
+La sesión existente del login (`SesionEstudio`: `usuarioId`, `nombre`, `rol`, `codigoEstudio`,
+`autenticado`, `fechaAcceso`), movida de la clave suelta `sesionUsuario` a
+`contableos:v1:global:session`.
 
 ### Meta (global)
 
@@ -232,7 +341,11 @@ Colección `auditLog`. **Append-only.**
 ```
 IngestionBatch 1 ── * RawPayload 1 ── 0..1 CanonicalDocument 1 ── 0..1 JournalEntry
                                      (duplicado) ──► CanonicalDocument original
-JournalEntry * ── 1 TemplateVersion
-JournalEntry * ── 1 AccountingPeriod (por accountingPeriod)
+JournalEntry * ── 1 TemplateVersion (global, por templateId + templateVersion)
+Template 1 ── * TemplateVersion 1 ── * Rule, * TestCase
+Empresa 1 ── * TemplateActivation * ── 1 Template
+JournalEntry * ── 1 Empresa.periodos[] (por accountingPeriod)
+EntryLine.accountCode ──► Cuenta del catálogo de la empresa (chartOfAccounts)
+Empresa.plantillasActivasIds ──► activaciones iniciales (migración perezosa, §4.5)
 AuditEvent * ── 1 traceId (agrupa toda la cadena)
 ```

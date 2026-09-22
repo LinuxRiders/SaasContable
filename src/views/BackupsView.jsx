@@ -1,9 +1,10 @@
 import React from 'react';
 import { DownloadCloud, UploadCloud, RefreshCcw, Database, AlertTriangle } from 'lucide-react';
 import { useAccounting } from '../context/AccountingContext';
+import { resetDemoData } from '../services/ingestion/index.js';
 
 export const BackupsView = () => {
-  const { empresas, cerrarSesion } = useAccounting();
+  const { empresas, cerrarSesion, recargarDesdeAlmacenamiento, sesionUsuario, empresaActiva } = useAccounting();
 
   const handleExport = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ empresas, fechaExportacion: new Date().toISOString() }, null, 2));
@@ -31,9 +32,15 @@ export const BackupsView = () => {
   };
 
   const handleReset = () => {
-    if (window.confirm("ATENCIÓN: Esto borrará todos los datos locales y restablecerá el sistema a los valores de fábrica (semilla). ¿Desea continuar?")) {
-      localStorage.clear();
-      window.location.reload();
+    if (window.confirm("ATENCIÓN: Esto borrará todos los datos locales y restablecerá el sistema a los valores de fábrica (semilla), pero conservará su sesión activa. ¿Desea continuar?")) {
+      const ctx = {
+        tenantId: empresaActiva?.id || 'global',
+        userId: sesionUsuario?.usuarioId || 'SYSTEM',
+        role: sesionUsuario?.rol || 'UNKNOWN'
+      };
+      resetDemoData(ctx);
+      recargarDesdeAlmacenamiento();
+      alert("Sistema restaurado a datos semilla.");
     }
   };
 
@@ -82,7 +89,7 @@ export const BackupsView = () => {
             <div>
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#991B1B' }}>Zona de Peligro: Reset de Fábrica</h3>
               <p style={{ margin: '0 0 1rem 0', color: '#B91C1C', fontSize: '0.9rem' }}>
-                Esta acción eliminará todos los datos almacenados en su navegador (localStorage) y devolverá el sistema a su estado inicial de demostración (Semilla).
+                Esta acción eliminará todos los datos de ingestión y catálogos modificados, y devolverá el sistema a su estado inicial de demostración (Semilla). Se conservará su sesión activa.
               </p>
               <button className="btn btn--primary" style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }} onClick={handleReset}>
                 <RefreshCcw size={16} /> Restablecer a Datos Semilla

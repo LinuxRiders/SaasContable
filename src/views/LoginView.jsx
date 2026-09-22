@@ -24,8 +24,12 @@ export const LoginView = () => {
   const handleDemoLogin = (role) => {
     if (role === 'admin') {
       iniciarSesion("admin_pedro", "123456", "ESTUDIO-01");
-    } else {
+    } else if (role === 'maker') {
       iniciarSesion("contador_maria", "123456", "ESTUDIO-01");
+    } else if (role === 'checker') {
+      iniciarSesion("revisor_luis", "123456", "ESTUDIO-01");
+    } else if (role === 'auditor') {
+      iniciarSesion("auditora_ana", "123456", "ESTUDIO-01");
     }
   };
 
@@ -296,6 +300,66 @@ export const LoginView = () => {
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>Contador María</div>
                     <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Contador Maker</div>
+                  </div>
+                </div>
+                <LogIn size={16} color="#94a3b8" />
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => handleDemoLogin('checker')}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  padding: '0.75rem 1rem', 
+                  backgroundColor: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.85rem' }}>
+                    RL
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>Luis Revisor</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Contador Checker</div>
+                  </div>
+                </div>
+                <LogIn size={16} color="#94a3b8" />
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => handleDemoLogin('auditor')}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  padding: '0.75rem 1rem', 
+                  backgroundColor: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f3e8ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.85rem' }}>
+                    AA
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>Ana Auditora</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Auditor (Lectura)</div>
                   </div>
                 </div>
                 <LogIn size={16} color="#94a3b8" />

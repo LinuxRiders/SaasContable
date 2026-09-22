@@ -5,7 +5,7 @@ import { Header } from './components/Header';
 import { EmpresasView } from './views/EmpresasView';
 import { PlanContableView } from './views/PlanContableView';
 import { BancosView } from './views/BancosView';
-import { PlantillasView } from './views/PlantillasView';
+import { PlantillasEmpresaView } from './views/PlantillasEmpresaView';
 import { UsuariosView } from './views/UsuariosView';
 import { ComprasView } from './views/ComprasView';
 import { VentasView } from './views/VentasView';
@@ -16,6 +16,11 @@ import { LiquidacionIGVView } from './views/LiquidacionIGVView';
 import { CierreEjercicioView } from './views/CierreEjercicioView';
 import { BackupsView } from './views/BackupsView';
 import { TablasSunatView } from './views/TablasSunatView';
+
+import { IngestionView } from './views/IngestionView';
+import { BandejaView } from './views/BandejaView';
+import { PendientesAprobacionView } from './views/PendientesAprobacionView';
+import { PlantillasGlobalesView } from './views/PlantillasGlobalesView';
 
 import { LoginView } from './views/LoginView';
 import { useAccounting } from './context/AccountingContext';
@@ -40,11 +45,14 @@ export function AppContent() {
     usuarios: "Usuarios del Estudio y Segregación de Funciones",
     compras: "Módulo de Compras (Gestión Proveedores y Cálculo IGV)",
     ventas: "Módulo de Ventas (Gestión Clientes y Débito Fiscal)",
-    tesoreria: "Tesorería — Gestión de Cobros, Pagos y Multi-Banco",
+    tesoreria: "Tesorería - Gestión de Cobros, Pagos y Multi-Banco",
     libros: "Libros Contables: Diario, Mayor Auxiliar y Balances",
     conciliacion: "Conciliación Bancaria y Detalle de Desembolsos",
     liquidacion: "Liquidación Mensual de IGV (SUNAT)",
-    cierre: "Cierre Contable Anual y Asientos de Refundición"
+    cierre: "Cierre Contable Anual y Asientos de Refundición",
+    ingestion: "Ingestión Manual de Comprobantes (Maker)",
+    bandeja: "Bandeja de Entrada (Borradores y Staging)",
+    pendientes: "Pendientes de Aprobación (Checker)"
   };
 
   const renderView = () => {
@@ -56,7 +64,7 @@ export function AppContent() {
       case 'bancos':
         return <BancosView />;
       case 'plantillas':
-        return <PlantillasView />;
+        return <PlantillasEmpresaView onNavigate={(tab) => setActiveTab(tab)} />;
       case 'usuarios':
         return <UsuariosView />;
       case 'compras':
@@ -78,7 +86,13 @@ export function AppContent() {
       case 'tablas_sunat':
         return <TablasSunatView />;
       case 'plantillas_globales':
-        return <PlantillasView />;
+        return <PlantillasGlobalesView />;
+      case 'ingestion':
+        return <IngestionView />;
+      case 'bandeja':
+        return <BandejaView />;
+      case 'pendientes':
+        return <PendientesAprobacionView />;
       default:
         return <EmpresasView />;
     }

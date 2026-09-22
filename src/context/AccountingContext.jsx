@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { generarAsientoContable } from '../utils/accountingEngine';
 import { mockEmpresas } from '../data/mockEmpresas';
 import { mockPlanContable } from '../data/mockPlanContable';
@@ -11,26 +11,36 @@ import {
   mockPartidasExtracto 
 } from '../data/mockTransacciones';
 
+import * as repository from '../services/storage/repository.js';
+import * as accountingStore from '../services/storage/accountingStore.js';
+import { ensureSeeded } from '../services/ingestion/demoService.js';
+
+// Ensure data is seeded before first render reads from storage
+repository.init();
+ensureSeeded(repository);
+
 const AccountingContext = createContext(null);
 
 export const AccountingProvider = ({ children }) => {
   // --- ESTADOS PRINCIPALES ---
   const [sesionUsuario, setSesionUsuario] = useState(() => {
-    const saved = localStorage.getItem('sesionUsuario');
-    return saved ? JSON.parse(saved) : null;
+    return accountingStore.loadSession();
   });
-  const [empresas, setEmpresas] = useState(mockEmpresas);
+  const [empresas, setEmpresas] = useState(() => {
+    return accountingStore.loadEmpresas() || mockEmpresas;
+  });
   const [empresaActiva, setEmpresaActiva] = useState(null);
   const [ejercicioActivo, setEjercicioActivo] = useState("");
   const [periodoActivo, setPeriodoActivo] = useState("");
   const [estadoPeriodo, setEstadoPeriodo] = useState("ABIERTO");
 
-  const [planesPorEmpresa, setPlanesPorEmpresa] = useState(
-    mockEmpresas.reduce((acc, emp) => {
-      acc[emp.id] = mockPlanContable;
+  const [planesPorEmpresa, setPlanesPorEmpresa] = useState(() => {
+    const loadedEmpresas = accountingStore.loadEmpresas() || mockEmpresas;
+    return loadedEmpresas.reduce((acc, emp) => {
+      acc[emp.id] = accountingStore.loadChartOfAccounts(emp.id) || mockPlanContable;
       return acc;
-    }, {})
-  );
+    }, {});
+  });
   
   const planContable = planesPorEmpresa[empresaActiva?.id] || [];
   const [bancos, setBancos] = useState(mockBancos);
@@ -43,20 +53,50 @@ export const AccountingProvider = ({ children }) => {
 
   // --- HELPERS CONTABLES ---
   
+  // --- EFFECTS FOR PERSISTENCE ---
+  useEffect(() => {
+    accountingStore.saveEmpresas(empresas);
+  }, [empresas]);
+
+  useEffect(() => {
+    if (empresaActiva?.id && planesPorEmpresa[empresaActiva.id]) {
+      accountingStore.saveChartOfAccounts(empresaActiva.id, planesPorEmpresa[empresaActiva.id]);
+    }
+  }, [planesPorEmpresa, empresaActiva?.id]);
+
+  const recargarDesdeAlmacenamiento = useCallback(() => {
+    const loadedEmpresas = accountingStore.loadEmpresas() || mockEmpresas;
+    setEmpresas(loadedEmpresas);
+    setPlanesPorEmpresa(
+      loadedEmpresas.reduce((acc, emp) => {
+        acc[emp.id] = accountingStore.loadChartOfAccounts(emp.id) || mockPlanContable;
+        return acc;
+      }, {})
+    );
+  }, []);
+
   // --- SESSION Y NAVEGACIÓN ---
   const iniciarSesion = (usuario, password, codigoEstudio) => {
     // Autenticación mock
-    if ((usuario === "admin_pedro" || usuario === "contador_maria") && password) {
+    let nombre = "";
+    let rol = "";
+    
+    if (usuario === "admin_pedro") { nombre = "Pedro Admin"; rol = "Admin"; }
+    else if (usuario === "contador_maria") { nombre = "María Contador"; rol = "Maker"; }
+    else if (usuario === "revisor_luis") { nombre = "Luis Revisor"; rol = "Checker"; }
+    else if (usuario === "auditora_ana") { nombre = "Ana Auditora"; rol = "Auditor"; }
+    
+    if (nombre && password) {
       const sesion = {
         usuarioId: usuario,
-        nombre: usuario === "admin_pedro" ? "Pedro Admin" : "María Contador",
-        rol: usuario === "admin_pedro" ? "Admin" : "Maker",
+        nombre: nombre,
+        rol: rol,
         codigoEstudio: codigoEstudio || "ESTUDIO-01",
         autenticado: true,
         fechaAcceso: new Date().toISOString()
       };
       setSesionUsuario(sesion);
-      localStorage.setItem('sesionUsuario', JSON.stringify(sesion));
+      accountingStore.saveSession(sesion);
       return true;
     }
     return false;
@@ -65,7 +105,7 @@ export const AccountingProvider = ({ children }) => {
   const cerrarSesion = () => {
     setSesionUsuario(null);
     setEmpresaActiva(null);
-    localStorage.removeItem('sesionUsuario');
+    accountingStore.clearSession();
   };
 
   const seleccionarEmpresaYPeriodo = (empresaId, ejercicio, periodo, estado) => {
@@ -616,6 +656,7 @@ export const AccountingProvider = ({ children }) => {
       sesionUsuario,
       iniciarSesion,
       cerrarSesion,
+      recargarDesdeAlmacenamiento,
       empresas,
       empresaActiva,
       setEmpresaActiva, // deprecable, usar seleccionarEmpresaYPeriodo

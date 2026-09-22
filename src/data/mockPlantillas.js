@@ -65,5 +65,17 @@ export const mockPlantillas = [
     aplicaIGV: true,
     tasaIGV: 0.18,
     requiereCC: false
+  },
+  {
+    id: "PL-06",
+    codigo: "COMPRA_OTROS_GASTOS_CC",
+    nombre: "Otros Gastos de Gestión por Centro de Costo",
+    tipoOperacion: "COMPRA",
+    cuentaBase: "6591101",
+    cuentaImpuesto: "4011101",
+    cuentaObligacion: "4212101",
+    aplicaIGV: true,
+    tasaIGV: 0.18,
+    requiereCC: true
   }
 ];

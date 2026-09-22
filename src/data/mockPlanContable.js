@@ -247,6 +247,37 @@ export const mockPlanContable = [
     saldoAcreedor: 0
   },
   {
+    codigo: "61",
+    descripcion: "VARIACIÓN DE INVENTARIOS",
+    elemento: 6,
+    esCuentaU: false,
+    moneda: "MN",
+    tipoAnalisis: "Sin Análisis",
+    requiereCC: false
+  },
+  {
+    codigo: "611",
+    descripcion: "MERCADERÍAS",
+    elemento: 6,
+    esCuentaU: false,
+    moneda: "MN",
+    tipoAnalisis: "Sin Análisis",
+    requiereCC: false
+  },
+  {
+    codigo: "6111101",
+    descripcion: "VARIACIÓN DE MERCADERÍAS",
+    elemento: 6,
+    esCuentaU: true,
+    moneda: "MN",
+    tipoAnalisis: "Por Documento / RUC",
+    requiereCC: false,
+    rubroEF1: "",
+    rubroEF2: "EF-02",
+    saldoDeudor: 0,
+    saldoAcreedor: 0
+  },
+  {
     codigo: "63",
     descripcion: "GASTOS DE SERVICIOS PRESTADOS POR TERCEROS",
     elemento: 6,
@@ -310,6 +341,31 @@ export const mockPlanContable = [
     rubroEF1: "",
     rubroEF2: "EF-02",
     saldoDeudor: 2100.00,
+    saldoAcreedor: 0
+  },
+  {
+    codigo: "659",
+    descripcion: "OTROS GASTOS DE GESTIÓN",
+    elemento: 6,
+    esCuentaU: false,
+    moneda: "MN",
+    tipoAnalisis: "Sin Análisis",
+    requiereCC: false
+  },
+  {
+    codigo: "6591101",
+    descripcion: "OTROS GASTOS DE GESTIÓN - DIVERSOS",
+    elemento: 6,
+    esCuentaU: true,
+    moneda: "MN",
+    tipoAnalisis: "Por Documento / RUC",
+    amarre1: "9411101",
+    amarre2: "7911101",
+    amarre3: "",
+    requiereCC: true,
+    rubroEF1: "",
+    rubroEF2: "EF-02",
+    saldoDeudor: 0,
     saldoAcreedor: 0
   },
 
