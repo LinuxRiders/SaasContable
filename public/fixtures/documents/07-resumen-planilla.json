@@ -1,0 +1,41 @@
+{
+  "schema": "contableos.document.v1",
+  "jurisdiction": "PE",
+  "documentType": "PAYROLL_SUMMARY",
+  "series": "PLA",
+  "number": "2026-09",
+  "issueDate": "2026-09-30",
+  "dueDate": null,
+  "currency": "PEN",
+  "parties": [
+    {
+      "role": "ISSUER",
+      "tenantId": "01",
+      "fiscalIdType": "RUC",
+      "fiscalId": "20450656934",
+      "name": "PACHATUSANTREK SOCIEDAD ANÓNIMA CERRADA",
+      "countryCode": "PE"
+    }
+  ],
+  "fields": {
+    "payrollPeriod": "2026-09",
+    "costCenter": "CC-ADMIN",
+    "grossSalariesMinor": 1000000,
+    "employerHealthMinor": 90000,
+    "publicPensionMinor": 52000,
+    "privatePensionMinor": 78000,
+    "incomeTaxWithheldMinor": 15000,
+    "netPayableMinor": 855000
+  },
+  "lines": [],
+  "taxes": [],
+  "withholdings": [],
+  "references": [],
+  "totals": {
+    "netMinor": 1000000,
+    "taxMinor": 0,
+    "withheldMinor": 145000,
+    "totalMinor": 1000000,
+    "payableMinor": 855000
+  }
+}

@@ -2,7 +2,7 @@ import React from 'react';
 
 export const MetricCard = ({ title, value, subtext, badgeText, badgeType = 'neutral', icon: Icon }) => {
   return (
-    <div className="metric-card">
+    <div className={`metric-card metric-card--${badgeType}`}>
       <div className="metric-card__header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {Icon && <Icon size={12} color="#64748B" />}

@@ -45,7 +45,7 @@ export const BackupsView = () => {
   };
 
   return (
-    <div className="content-body" style={{ padding: '2rem' }}>
+    <div className="content-body">
       <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '2rem' }}>
           <Database size={24} color="var(--primary-color)" />

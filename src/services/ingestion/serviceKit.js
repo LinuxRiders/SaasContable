@@ -27,26 +27,45 @@ export function validateCtx(ctx, repo) {
   return ok(emp);
 }
 
+/**
+ * Valida directamente que ctx.role esté entre los roles permitidos.
+ * Uso directo sin necesidad de pasar por el sistema de permisos de `can()`.
+ * @param {Object} ctx - Contexto con {tenantId, userId, role}
+ * @param {string[]} allowedRoles - Roles permitidos (ej. ['ADMIN', 'CHECKER'])
+ * @returns {{ ok: boolean, data?: boolean, error?: Object }}
+ */
+export function assertRole(ctx, allowedRoles) {
+  if (!ctx || !ctx.role) {
+    return fail('FORBIDDEN', 'Contexto de usuario inválido: falta rol');
+  }
+  if (!allowedRoles.includes(ctx.role)) {
+    return fail('FORBIDDEN', `El rol ${ctx.role} no tiene permiso. Roles requeridos: ${allowedRoles.join(', ')}`);
+  }
+  return ok(true);
+}
+
 export function authorize(ctx, operation, repo, clock = () => new Date().toISOString()) {
-  if (!ctx || !can(ctx.role, operation)) {
+  const role = ctx?.role || 'UNKNOWN';
+  if (!ctx || !can(role, operation)) {
     const event = buildAuditEvent({
       id: crypto.randomUUID(),
       at: clock(),
       tenantId: ctx?.tenantId || 'global',
       traceId: crypto.randomUUID(),
       userId: ctx?.userId || 'unknown',
-      role: ctx?.role || 'UNKNOWN',
+      role: role,
       action: 'ACTION_DENIED',
       entityType: 'Operation',
       entityId: operation,
-      detail: { reason: `Role ${ctx?.role} cannot perform ${operation}` }
+      detail: { reason: `Role ${role} cannot perform ${operation}` }
     });
     if (ctx?.tenantId && ctx.tenantId !== 'global') {
       repo.appendOnly(ctx.tenantId, 'auditLog', [event]);
     } else {
       repo.appendOnly('global', 'auditLog', [event]);
     }
-    return fail('FORBIDDEN', `El rol ${ctx?.role} no tiene permiso para ${operation}`);
+    const roleDisplay = role === 'UNKNOWN' ? 'No Autenticado' : role;
+    return fail('FORBIDDEN', `El rol '${roleDisplay}' no tiene permiso para ${operation}`);
   }
   return ok(true);
 }
@@ -97,6 +116,7 @@ export const serviceKit = {
   fail,
   withLatency,
   validateCtx,
+  assertRole,
   authorize,
   assertWritablePeriod,
   clock,

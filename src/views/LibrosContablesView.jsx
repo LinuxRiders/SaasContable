@@ -101,7 +101,7 @@ export const LibrosContablesView = () => {
           onClick={() => setSubTab('MAYOR')}
         >
           <BookOpen size={14} style={{ display: 'inline', marginRight: 4 }} />
-          Consulta de Movimientos — Mayor Auxiliar (Figma 118-2732)
+          Consulta de Movimientos — Mayor Auxiliar
         </button>
         <button 
           className={`tab-btn ${subTab === 'DIARIO' ? 'tab-btn--active' : ''}`}

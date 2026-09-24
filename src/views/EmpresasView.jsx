@@ -140,7 +140,7 @@ export const EmpresasView = () => {
       planAsignado: planAsignadoLabel,
       digitosRegistro: "7 Dígitos (Analítico)",
       ejerciciosDisponibles: [currentYear],
-      plantillasActivasIds: newPlantillasIds,
+      jurisdictionCode: 'PE',
       periodos: [
         { ejercicio: currentYear, mes: 1, nombrePeriodo: `ENERO_${currentYear}`, estado: 'ABIERTO' }
       ]

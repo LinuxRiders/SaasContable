@@ -8,7 +8,6 @@ import { DashboardView } from './views/DashboardView';
 import { EmpresasView } from './views/EmpresasView';
 import { PlanContableView } from './views/PlanContableView';
 import { BancosView } from './views/BancosView';
-import { PlantillasEmpresaView } from './views/PlantillasEmpresaView';
 import { UsuariosView } from './views/UsuariosView';
 import { RolesPermisosView } from './views/RolesPermisosView';
 import { ComprasView } from './views/ComprasView';
@@ -24,7 +23,9 @@ import { TablasSunatView } from './views/TablasSunatView';
 import { IngestionView } from './views/IngestionView';
 import { BandejaView } from './views/BandejaView';
 import { PendientesAprobacionView } from './views/PendientesAprobacionView';
-import { PlantillasGlobalesView } from './views/PlantillasGlobalesView';
+import ConfiguracionContableView from './views/ConfiguracionContableView';
+import PlantillasContablesView from './views/PlantillasContablesView';
+import SimuladorContableView from './views/SimuladorContableView';
 
 import { LoginView } from './views/LoginView';
 import { useAccounting } from './context/AccountingContext';
@@ -43,10 +44,9 @@ export function AppContent() {
 
   const tabTitles = {
     dashboard: "Dashboard Central & Gestión General",
-    empresas: "Información de Compañías Usuarias (Figma 118-2)",
+    empresas: "Cartera de Empresas Usuarias",
     plan: "Plan Contable General Empresarial (PCGE 2026)",
     bancos: "Catálogo de Cuentas Bancarias y Tesorería",
-    plantillas: "Plantillas de Automatización Contable",
     usuarios: "Usuarios del Estudio y Segregación de Funciones",
     roles_estudio: "Roles y Permisos del Estudio",
     usuarios_empresa: "Usuarios de la Empresa",
@@ -60,10 +60,12 @@ export function AppContent() {
     cierre: "Cierre Contable Anual y Asientos de Refundición",
     backups: "Copias de Seguridad (Snapshots)",
     tablas_sunat: "Tablas Maestras SUNAT",
-    plantillas_globales: "Plantillas Maestras Globales",
+    configuracion_contable: "Configuración Contable y Paquete de Jurisdicción",
+    plantillas_contables: "Motor de Plantillas Contables AST",
+    simulador_contable: "Simulador Contable de Documentos (AST Engine)",
     ingestion: "Ingestión Manual de Comprobantes (Maker)",
-    bandeja: "Bandeja de Entrada (Borradores y Staging)",
-    pendientes: "Pendientes de Aprobación (Checker)"
+    bandeja: "Bandeja de Entrada de Documentos",
+    pendientes: "Aprobación de Asientos Pendientes (Checker)"
   };
 
   const renderView = () => {
@@ -76,8 +78,6 @@ export function AppContent() {
         return <PlanContableView />;
       case 'bancos':
         return <BancosView />;
-      case 'plantillas':
-        return <PlantillasEmpresaView onNavigate={(tab) => setActiveTab(tab)} />;
       case 'usuarios':
         return <UsuariosView scope="STUDY" />;
       case 'roles_estudio':
@@ -104,8 +104,12 @@ export function AppContent() {
         return <BackupsView />;
       case 'tablas_sunat':
         return <TablasSunatView />;
-      case 'plantillas_globales':
-        return <PlantillasGlobalesView />;
+      case 'configuracion_contable':
+        return <ConfiguracionContableView />;
+      case 'plantillas_contables':
+        return <PlantillasContablesView />;
+      case 'simulador_contable':
+        return <SimuladorContableView />;
       case 'ingestion':
         return <IngestionView />;
       case 'bandeja':

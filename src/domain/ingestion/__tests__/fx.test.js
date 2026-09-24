@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolveRate, convert } from '../fx.js';
 import { mockTiposCambio } from '../../../data/mockTiposCambio.js';
-import { evaluateTemplate } from '../../templates/evaluator.js';
-import { buildAccountIndex } from '../accounts.js';
-import { mockPlanContable } from '../../../data/mockPlanContable.js';
 
 describe('FX Domain Module (T086, R-02, R-12, RF-07)', () => {
   const sampleRates = [
@@ -70,98 +67,5 @@ describe('FX Domain Module (T086, R-02, R-12, RF-07)', () => {
     const totalDebe = basePEN + igvPEN + basePEN;
     const totalHaber = totalPEN + basePEN;
     expect(totalDebe).toBe(totalHaber);
-  });
-
-  it('property test: Debit == Credit on 1,000 pseudo-random USD invoices including split templates', () => {
-    const catalog = buildAccountIndex(mockPlanContable);
-
-    // Plantilla con prorrateo (split) 60/40
-    const splitVersion = {
-      versionNumber: 1,
-      status: 'ACTIVE',
-      defaults: {
-        baseAccount: '6011101',
-        taxAccount: '4011101',
-        counterpartAccount: '4212101',
-        costCenter: 'CC-ADMIN'
-      },
-      documentRules: [],
-      lineRules: [
-        {
-          id: 'RULE-SPLIT',
-          name: 'Prorrateo 60/40',
-          priority: 10,
-          when: {
-            field: 'line.amountCents',
-            op: 'gte',
-            value: 1
-          },
-          action: {
-            split: [
-              { percentBp: 6000, accountCode: '6011101', costCenter: 'CC-ADMIN' },
-              { percentBp: 4000, accountCode: '6591101', costCenter: 'CC-LOGISTICA' }
-            ]
-          }
-        }
-      ]
-    };
-
-    // LCG pseudo-aleatorio con semilla fija
-    let seed = 42;
-    function random() {
-      seed = (seed * 1664525 + 1013904223) % 4294967296;
-      return seed / 4294967296;
-    }
-
-    for (let i = 0; i < 1000; i++) {
-      // Monto total entre USD 10.00 y USD 50,000.00
-      const totalUSD = Math.floor(random() * 4999000) + 1000;
-      // Tasa entre 3.500 y 4.200
-      const rateMilli = Math.floor(random() * 700) + 3500;
-
-      // Base e IGV en USD aproximados
-      const baseUSD = Math.round(totalUSD / 1.18);
-      const igvUSD = totalUSD - baseUSD;
-
-      // Conversión R-02
-      const totalPEN = convert(totalUSD, rateMilli);
-      const igvPEN = convert(igvUSD, rateMilli);
-      const basePEN = totalPEN - igvPEN;
-
-      const doc = {
-        operationType: 'COMPRA',
-        currency: 'USD',
-        totals: {
-          totalAmount: totalUSD,
-          taxAmount: igvUSD,
-          taxableAmount: baseUSD
-        },
-        lines: [
-          { lineNo: 1, description: 'Servicio general', amountCents: baseUSD, taxCode: 'IGV' }
-        ]
-      };
-
-      const result = evaluateTemplate({
-        version: splitVersion,
-        document: doc,
-        functionalAmounts: {
-          baseCents: basePEN,
-          igvCents: igvPEN,
-          totalCents: totalPEN,
-          lineBaseCents: [basePEN]
-        },
-        accountIndex: catalog
-      });
-
-      const sumDebits = result.lines
-        .filter(l => l.side === 'D')
-        .reduce((sum, l) => sum + l.functionalAmountCents, 0);
-
-      const sumCredits = result.lines
-        .filter(l => l.side === 'H')
-        .reduce((sum, l) => sum + l.functionalAmountCents, 0);
-
-      expect(sumDebits).toBe(sumCredits);
-    }
   });
 });

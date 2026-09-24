@@ -1,0 +1,4 @@
+tipo_comprobante,serie,numero,fecha_emision,moneda,tipo_doc_cliente,num_doc_cliente,nombre_cliente,descripcion,valor_venta,igv,importe_total
+03,B001,00000101,2026-09-18,PEN,1,40000001,CLIENTE DEMO UNO,Tour Valle Sagrado,100.00,18.00,118.00
+03,B001,00000102,2026-09-18,PEN,1,40000002,CLIENTE DEMO DOS,Alquiler de bastones,50.00,9.00,59.00
+03,B001,00000103,2026-09-18,PEN,1,40000003,CLIENTE DEMO TRES,Tour Montaña de Colores,200.00,36.00,236.00

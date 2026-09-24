@@ -20,7 +20,8 @@ export const mockEmpresas = [
     asientosCount: 4821,
     cuentasCount: 1420,
     ejerciciosDisponibles: ["2026", "2025"],
-    plantillasActivasIds: ["TPL-COMPRA-01", "TPL-VENTA-01", "TPL-SERV-01"],
+    jurisdictionCode: "PE",
+    csvProfiles: ["PE_BOLETAS_VENTA_V1"],
     periodos: [
       { ejercicio: "2026", mes: 8, nombrePeriodo: "AGOSTO_2026", estado: "CERRADO" },
       { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
@@ -47,7 +48,7 @@ export const mockEmpresas = [
     asientosCount: 1240,
     cuentasCount: 1105,
     ejerciciosDisponibles: ["2026"],
-    plantillasActivasIds: ["TPL-COMPRA-01", "TPL-VENTA-01"],
+    jurisdictionCode: "PE",
     periodos: [
       { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
     ]
@@ -73,7 +74,7 @@ export const mockEmpresas = [
     asientosCount: 890,
     cuentasCount: 980,
     ejerciciosDisponibles: ["2026"],
-    plantillasActivasIds: ["TPL-SERV-01"],
+    jurisdictionCode: "PE",
     periodos: [
       { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
     ]
@@ -99,7 +100,7 @@ export const mockEmpresas = [
     asientosCount: 15,
     cuentasCount: 450,
     ejerciciosDisponibles: ["2026"],
-    plantillasActivasIds: [],
+    jurisdictionCode: "PE",
     periodos: [
       { ejercicio: "2026", mes: 9, nombrePeriodo: "SETIEMBRE_2026", estado: "ABIERTO" }
     ]

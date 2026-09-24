@@ -73,8 +73,24 @@ export const initialUsers = [
     id: 'USR_MARIA', loginUserId: 'contador_maria', name: 'María Contador', email: 'maria@estudio.pe',
     document: 'DNI 09876543', studyRoleId: 'ROLE_STUDY_MEMBER', status: 'HABILITADO', allCompanies: false,
     assignments: [
+      { companyId: '01', roleId: 'TPL_MAKER', status: 'ACTIVE' },
+      { companyId: '02', roleId: 'TPL_MAKER', status: 'ACTIVE' }
+    ]
+  },
+  {
+    id: 'USR_REVISOR', loginUserId: 'revisor_luis', name: 'Luis Revisor', email: 'luis@estudio.pe',
+    document: 'DNI 11223344', studyRoleId: 'ROLE_STUDY_MEMBER', status: 'HABILITADO', allCompanies: true,
+    assignments: [
       { companyId: '01', roleId: 'TPL_CHECKER', status: 'ACTIVE' },
       { companyId: '02', roleId: 'TPL_CHECKER', status: 'ACTIVE' }
+    ]
+  },
+  {
+    id: 'USR_AUDITOR', loginUserId: 'auditora_ana', name: 'Ana Auditora', email: 'ana@estudio.pe',
+    document: 'DNI 55667788', studyRoleId: 'ROLE_STUDY_MEMBER', status: 'HABILITADO', allCompanies: true,
+    assignments: [
+      { companyId: '01', roleId: 'TPL_AUDITOR', status: 'ACTIVE' },
+      { companyId: '02', roleId: 'TPL_AUDITOR', status: 'ACTIVE' }
     ]
   },
   {

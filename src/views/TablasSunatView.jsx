@@ -34,14 +34,14 @@ export const TablasSunatView = () => {
   );
 
   return (
-    <div className="content-body" style={{ padding: '2rem' }}>
+    <div className="content-body">
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           <TableIcon size={24} color="var(--primary-color)" />
           <h2 style={{ margin: 0, color: 'var(--text-color)' }}>Tablas Maestras SUNAT</h2>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           <button 
             className={`btn ${activeTab === 'comprobantes' ? 'btn--primary' : 'btn--secondary'}`}
             onClick={() => setActiveTab('comprobantes')}
@@ -63,7 +63,7 @@ export const TablasSunatView = () => {
         </div>
 
         <div className="toolbar" style={{ marginBottom: '1.5rem' }}>
-          <div className="toolbar__search" style={{ width: '400px' }}>
+          <div className="toolbar__search" style={{ width: '100%', maxWidth: '400px' }}>
             <Search size={14} className="toolbar__search-icon" />
             <input 
               type="text" 

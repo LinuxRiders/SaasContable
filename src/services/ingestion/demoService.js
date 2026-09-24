@@ -1,73 +1,56 @@
 import * as repository from '../storage/repository.js';
 import { mockEmpresas } from '../../data/mockEmpresas.js';
 import { mockPlanContable } from '../../data/mockPlanContable.js';
-import { mockPlantillas } from '../../data/mockPlantillas.js';
-import { buildTemplateBankSeed } from '../../data/mockPlantillasReglas.js';
-import { categoriaDePlantilla } from '../../data/mockCategoriasPlantilla.js';
-import { buildIngestionSeed } from '../../data/mockIngestionSeed.js';
 import { mockTiposCambio } from '../../data/mockTiposCambio.js';
 import { buildAuditEvent } from '../../domain/ingestion/audit.js';
+import { seedAccountingConfig } from '../accounting/seedAccounting.js';
+import { seedIngestionConfig } from './seedIngestion.js';
 
-export function ensureSeeded(repo, clock = () => new Date().toISOString(), { seedIngestion = true } = {}) {
+export function ensureSeeded(repo, clock = () => new Date().toISOString()) {
   const meta = repo.getGlobal('meta');
-  if (meta && meta.schemaVersion === 1) {
-    // Si global:templates existe pero no tiene el formato nuevo (sin versions), se vuelve a sembrar solo el banco
-    const existingTemplates = repo.getGlobal('templates');
-    const hasVersions = Array.isArray(existingTemplates) && existingTemplates.length > 0 && Array.isArray(existingTemplates[0].versions);
-    if (!hasVersions) {
-      repo.setGlobal('templates', buildTemplateBankSeed(mockPlantillas, clock));
-    }
+  if (meta && meta.schemaVersion === 2) {
     if (!repo.getGlobal('fxRates')) {
       repo.setGlobal('fxRates', mockTiposCambio);
-    }
-    const existingEntries = repo.getCollection('01', 'journalEntries');
-    if (!existingEntries && seedIngestion) {
-      const seed = buildIngestionSeed(clock);
-      repo.appendOnly('01', 'rawPayloads', seed.rawPayloads);
-      repo.setCollection('01', 'documents', seed.documents);
-      repo.setCollection('01', 'journalEntries', seed.journalEntries);
-      repo.setCollection('01', 'dedupIndex', seed.dedupIndex);
-      repo.appendOnly('01', 'auditLog', seed.auditEvents);
     }
     return;
   }
 
+  // Si el esquema no es 2, limpiar espacio de nombres conservando la sesión (research R-13)
+  if (meta && meta.schemaVersion !== 2) {
+    repo.clearNamespace({ keepSession: true });
+  }
+
   const seededAt = clock();
-  
+
   // Seed empresas
   repo.setGlobal('empresas', mockEmpresas);
-  
+
   // Seed chartOfAccounts for each company
   mockEmpresas.forEach(emp => {
     repo.setCollection(emp.id, 'chartOfAccounts', mockPlanContable);
   });
-  
-  // Seed templates global con versiones y reglas
-  repo.setGlobal('templates', buildTemplateBankSeed(mockPlantillas, clock));
-  
-  // Seed demoSettings
+
+  // Seed accounting config (mapas, reglas, plantillas)
+  seedAccountingConfig(repo, { clock, idGenerator: () => crypto.randomUUID() });
+
+  // Seed demoSettings con demoMode: true
   repo.setGlobal('demoSettings', {
     fxServiceDown: false,
     latencyMs: 150,
-    perItemLatencyMs: 40
+    perItemLatencyMs: 40,
+    demoMode: true,
+    extraction: { forceLowConfidence: false, forceUnreadable: false }
   });
+
+  // Seed colecciones de ingestión (vacías) por empresa
+  seedIngestionConfig(repo, mockEmpresas);
 
   // Seed fxRates
   repo.setGlobal('fxRates', mockTiposCambio);
-  
-  // Seed ingestion data for demo company '01'
-  if (seedIngestion) {
-    const seed = buildIngestionSeed(clock);
-    repo.appendOnly('01', 'rawPayloads', seed.rawPayloads);
-    repo.setCollection('01', 'documents', seed.documents);
-    repo.setCollection('01', 'journalEntries', seed.journalEntries);
-    repo.setCollection('01', 'dedupIndex', seed.dedupIndex);
-    repo.appendOnly('01', 'auditLog', seed.auditEvents);
-  }
 
   // Seed meta
   repo.setGlobal('meta', {
-    schemaVersion: 1,
+    schemaVersion: 2,
     seededAt
   });
 }
@@ -76,6 +59,9 @@ export function resetDemoData(ctx, clock = () => new Date().toISOString()) {
   repository.clearNamespace({ keepSession: true });
   ensureSeeded(repository, clock);
   
+  // Guard: si no hay contexto (usuario no logueado), no registrar evento
+  if (!ctx || !ctx.tenantId) return;
+
   const event = buildAuditEvent({
     id: crypto.randomUUID(),
     at: clock(),
@@ -102,11 +88,10 @@ export function setFxServiceDown(ctx, { down } = {}) {
   const settings = repository.getGlobal('demoSettings') || {
     fxServiceDown: false,
     latencyMs: 150,
-    perItemLatencyMs: 40
+    perItemLatencyMs: 40,
+    demoMode: true
   };
   settings.fxServiceDown = !!down;
   repository.setGlobal('demoSettings', settings);
   return { ok: true, data: settings };
 }
-
-

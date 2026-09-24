@@ -6,7 +6,6 @@ import {
   Building2, 
   BookOpen, 
   Landmark, 
-  FileCode2, 
   Users, 
   ShoppingCart, 
   TrendingUp, 
@@ -25,7 +24,9 @@ import {
   PanelLeftClose,
   PanelLeft,
   Upload,
-  Inbox
+  Inbox,
+  FileCog,
+  FlaskConical
 } from 'lucide-react';
 
 // Isotipo geométrico minimalista (Hexágono con trazo técnico de 2.5px)
@@ -37,20 +38,34 @@ const HexagonIsotype = () => (
 );
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
-  const { periodoActivo, estadoPeriodo, empresaActiva, cerrarSesion } = useAccounting();
+  const { periodoActivo, estadoPeriodo, empresaActiva, sesionUsuario, cerrarSesion } = useAccounting();
   const { currentUser, getRole } = useAccessManagement();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1180 : false);
+
+  // Sincronización robusta con la sesión activa
+  const displayName = sesionUsuario?.nombre || currentUser?.name || currentUser?.nombre || 'Administrador';
+  const displayRole = (sesionUsuario?.rol || (currentUser?.studyRoleId ? currentUser.studyRoleId.replace(/^ROLE_|^role-/, '') : 'ADMIN')).toUpperCase();
+
+  const userInitials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'AD';
+
+  const isAdmin = displayRole === 'ADMIN' || currentUser?.studyRoleId === 'ROLE_STUDY_ADMIN' || currentUser?.studyRoleId === 'ROLE_OWNER' || currentUser?.allCompanies;
 
   const studyPermissions = getRole(currentUser?.studyRoleId)?.permissions || [];
   const companyAssignment = currentUser?.assignments?.find((assignment) => assignment.companyId === empresaActiva?.id);
   const companyPermissions = getRole(companyAssignment?.roleId)?.permissions || [];
   
-  const canViewStudyUsers = currentUser?.allCompanies || studyPermissions.some((permission) =>
+  const canViewStudyUsers = isAdmin || currentUser?.allCompanies || studyPermissions.some((permission) =>
     ['study.users.view', 'study.users.manage', 'study.users.invite'].includes(permission)
   );
-  const canManageStudyRoles = currentUser?.allCompanies || studyPermissions.includes('study.roles.manage');
-  const canManageCompanyUsers = currentUser?.allCompanies || companyPermissions.includes('company.users.manage');
-  const canManageCompanyRoles = currentUser?.allCompanies || companyPermissions.includes('company.roles.manage');
+  const canManageStudyRoles = isAdmin || currentUser?.allCompanies || studyPermissions.includes('study.roles.manage');
+  const canManageCompanyUsers = isAdmin || currentUser?.allCompanies || companyPermissions.includes('company.users.manage');
+  const canManageCompanyRoles = isAdmin || currentUser?.allCompanies || companyPermissions.includes('company.roles.manage');
 
   const handleLogout = () => {
     if (window.confirm("¿Está seguro que desea cerrar sesión?")) {
@@ -61,21 +76,20 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const globalNavItems = [
     {
       group: "ADMINISTRACIÓN DEL ESTUDIO",
-      code: "SEC-01",
       items: [
-        { id: "dashboard", label: "Dashboard General", shortcut: "[G00]", icon: LayoutDashboard },
-        { id: "empresas", label: "Cartera de Empresas", shortcut: "[G01]", icon: Building2 },
-        { id: "usuarios", label: "Gestión de Usuarios", shortcut: "[G02]", icon: Users, visible: canViewStudyUsers },
-        { id: "roles_estudio", label: "Roles y Permisos", shortcut: "[G03]", icon: ShieldCheck, visible: canManageStudyRoles },
-        { id: "backups", label: "Copias de Seguridad", shortcut: "[G04]", icon: Database },
+        { id: "dashboard", label: "Dashboard General", icon: LayoutDashboard },
+        { id: "empresas", label: "Cartera de Empresas", icon: Building2 },
+        { id: "usuarios", label: "Gestión de Usuarios", icon: Users, visible: canViewStudyUsers },
+        { id: "roles_estudio", label: "Roles y Permisos", icon: ShieldCheck, visible: canManageStudyRoles },
+        { id: "backups", label: "Copias de Seguridad", icon: Database },
       ]
     },
     {
       group: "CONFIGURACIÓN MAESTRA",
-      code: "SEC-02",
       items: [
-        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", shortcut: "[G05]", icon: Table },
-        { id: "plantillas_globales", label: "Plantillas Globales", shortcut: "[G06]", icon: FileCode2 }
+        { id: "tablas_sunat", label: "Tablas Maestras SUNAT", icon: Table },
+        { id: "configuracion_contable", label: "Catálogo Contable (Paquete PE)", icon: BookOpen },
+        { id: "plantillas_contables", label: "Catálogo de Plantillas", icon: FileCog }
       ]
     }
   ];
@@ -83,55 +97,44 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const companyNavItems = [
     {
       group: "INGESTIÓN Y APROBACIÓN",
-      code: "ING-01",
       items: [
-        { id: "ingestion", label: "Ingestión Manual", shortcut: "[I01]", icon: Upload },
-        { id: "bandeja", label: "Bandeja de Entrada", shortcut: "[I02]", icon: Inbox },
-        { id: "pendientes", label: "Pendientes Aprob.", shortcut: "[I03]", icon: CheckCircle2 }
+        { id: "ingestion", label: "Ingestión Manual", icon: Upload },
+        { id: "bandeja", label: "Bandeja de Entrada", icon: Inbox },
+        { id: "pendientes", label: "Pendientes Aprob.", icon: CheckCircle2 }
       ]
     },
     {
       group: "TABLERO & OPERACIONES",
-      code: "MOD-01",
       items: [
-        { id: "dashboard", label: "Dashboard de la Empresa", shortcut: "[M00]", icon: LayoutDashboard },
-        { id: "compras", label: "Compras & Proveedores", shortcut: "[M01]", icon: ShoppingCart },
-        { id: "ventas", label: "Ventas & Clientes", shortcut: "[M02]", icon: TrendingUp },
-        { id: "tesoreria", label: "Tesorería & Cuentas", shortcut: "[M03]", icon: Wallet },
-        { id: "conciliacion", label: "Conciliación Bancaria", shortcut: "[M04]", icon: FileCheck }
+        { id: "dashboard", label: "Dashboard de la Empresa", icon: LayoutDashboard },
+        { id: "compras", label: "Compras & Proveedores", icon: ShoppingCart },
+        { id: "ventas", label: "Ventas & Clientes", icon: TrendingUp },
+        { id: "tesoreria", label: "Tesorería & Cuentas", icon: Wallet },
+        { id: "conciliacion", label: "Conciliación Bancaria", icon: FileCheck }
       ]
     },
     {
       group: "CONTABILIDAD Y LIBROS",
-      code: "MOD-02",
       items: [
-        { id: "libros", label: "Libros (Diario / Mayor)", shortcut: "[M05]", icon: Scale },
-        { id: "liquidacion", label: "Liquidación de IGV", shortcut: "[M06]", icon: Receipt },
-        { id: "cierre", label: "Cierre de Ejercicio", shortcut: "[M07]", icon: LockKeyhole }
+        { id: "libros", label: "Libros (Diario / Mayor)", icon: Scale },
+        { id: "liquidacion", label: "Liquidación de IGV", icon: Receipt },
+        { id: "cierre", label: "Cierre de Ejercicio", icon: LockKeyhole }
       ]
     },
     {
       group: "CONFIGURACIÓN EMPRESA",
-      code: "CFG-01",
       items: [
-        { id: "plan", label: "Catálogo de Cuentas", shortcut: "[C01]", icon: BookOpen },
-        { id: "plantillas", label: "Plantillas Contables", shortcut: "[C02]", icon: FileCode2 },
-        { id: "usuarios_empresa", label: "Usuarios de Empresa", shortcut: "[C03]", icon: Users, visible: canManageCompanyUsers },
-        { id: "roles_empresa", label: "Roles y Permisos", shortcut: "[C04]", icon: ShieldCheck, visible: canManageCompanyRoles }
+        { id: "configuracion_contable", label: "Configuración Contable", icon: BookOpen },
+        { id: "plantillas_contables", label: "Plantillas y Activación", icon: FileCog },
+        { id: "simulador_contable", label: "Simulador Contable", icon: FlaskConical, visible: isAdmin },
+        { id: "plan", label: "Catálogo de Cuentas", icon: BookOpen },
+        { id: "usuarios_empresa", label: "Usuarios de Empresa", icon: Users, visible: canManageCompanyUsers },
+        { id: "roles_empresa", label: "Roles y Permisos", icon: ShieldCheck, visible: canManageCompanyRoles }
       ]
     }
   ];
 
   const navItems = empresaActiva ? companyNavItems : globalNavItems;
-
-  const userInitials = (currentUser?.name || currentUser?.nombre || 'AD')
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .substring(0, 2)
-    .toUpperCase();
-
-  const userRoleName = currentUser?.studyRoleId?.replace('role-', '').toUpperCase() || 'ADMIN';
 
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : 'sidebar--expanded'}`}>
@@ -201,14 +204,11 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                   key={item.id}
                   className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''}`}
                   onClick={() => setActiveTab(item.id)}
-                  title={collapsed ? `${item.shortcut} ${item.label}` : undefined}
+                  title={collapsed ? item.label : undefined}
                 >
                   <Icon size={14} style={{ opacity: isActive ? 1 : 0.75, flexShrink: 0 }} />
                   {!collapsed && (
-                    <>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
-                      <span className="sidebar__item-shortcut">{item.shortcut}</span>
-                    </>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
                   )}
                 </div>
               );
@@ -219,16 +219,16 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
 
       {/* PIE DEL MENÚ: USUARIO CONECTADO & SALIR */}
       <div className="sidebar__footer">
-        <div className="sidebar__user-card" title={`${currentUser?.name || 'Administrador'} (${userRoleName})`}>
+        <div className="sidebar__user-card" title={`${displayName} (${displayRole})`}>
           <div className="sidebar__user-avatar">
             {userInitials}
           </div>
           {!collapsed && (
             <div className="sidebar__user-info" style={{ flex: 1 }}>
-              <div className="sidebar__user-name">{currentUser?.name || currentUser?.nombre || 'Admin Usuario'}</div>
+              <div className="sidebar__user-name">{displayName}</div>
               <div className="sidebar__user-role">
                 <ShieldCheck size={11} color="#94A3B8" />
-                <span>ROL: {userRoleName}</span>
+                <span>ROL: {displayRole}</span>
               </div>
             </div>
           )}

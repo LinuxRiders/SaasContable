@@ -1,0 +1,50 @@
+{
+  "schema": "contableos.document.v1",
+  "jurisdiction": "PE",
+  "documentType": "PROFESSIONAL_FEE_RECEIPT",
+  "series": "E001",
+  "number": "45",
+  "issueDate": "2026-09-20",
+  "dueDate": null,
+  "currency": "PEN",
+  "parties": [
+    {
+      "role": "ISSUER",
+      "fiscalIdType": "RUC",
+      "fiscalId": "10400000005",
+      "name": "PÉREZ QUISPE JUAN (DEMO)",
+      "countryCode": "PE"
+    },
+    {
+      "role": "RECEIVER",
+      "tenantId": "01",
+      "fiscalIdType": "RUC",
+      "fiscalId": "20450656934",
+      "name": "PACHATUSANTREK SOCIEDAD ANÓNIMA CERRADA",
+      "countryCode": "PE"
+    }
+  ],
+  "fields": {
+    "serviceDescription": "Asesoría contable del mes de setiembre",
+    "grossAmountMinor": 150000,
+    "costCenter": "CC-ADMIN"
+  },
+  "lines": [],
+  "taxes": [],
+  "withholdings": [
+    {
+      "withholdingCode": "INCOME_TAX_FEES",
+      "baseMinor": 150000,
+      "rateBp": 800,
+      "amountMinor": 12000
+    }
+  ],
+  "references": [],
+  "totals": {
+    "netMinor": 150000,
+    "taxMinor": 0,
+    "withheldMinor": 12000,
+    "totalMinor": 150000,
+    "payableMinor": 138000
+  }
+}

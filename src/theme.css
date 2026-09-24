@@ -37,25 +37,26 @@
   --border-dark: #94A3B8;
   --border-modal: #0F172A;
 
-  /* Estados Monocromáticos / Técnicos */
-  --color-success: #0F172A;
-  --color-success-bg: #F8FAFC;
-  --color-success-border: #94A3B8;
-  --color-success-dark: #0F172A;
+  /* Estados Semánticos Profesionales con Acentos Neutros */
+  --color-success: #059669;
+  --color-success-bg: #ECFDF5;
+  --color-success-border: #A7F3D0;
+  --color-success-dark: #065F46;
 
-  --color-warning: #334155;
-  --color-warning-bg: #F8FAFC;
-  --color-warning-border: #94A3B8;
-  --color-warning-dark: #1E293B;
+  --color-warning: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+  --color-warning-dark: #92400E;
 
-  --color-danger: #0F172A;
-  --color-danger-bg: #F8FAFC;
-  --color-danger-border: #64748B;
-  --color-danger-dark: #020617;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEF2F2;
+  --color-danger-border: #FECACA;
+  --color-danger-dark: #991B1B;
 
-  --color-info: #1E293B;
-  --color-info-bg: #F1F5F9;
-  --color-info-border: #CBD5E1;
+  --color-info: #2563EB;
+  --color-info-bg: #EFF6FF;
+  --color-info-border: #BFDBFE;
+  --color-info-dark: #1E40AF;
 
   /* Semántica de acento puntual (para alertas e indicadores críticos) */
   --status-green: #10B981;
@@ -488,8 +489,10 @@ body {
    CONTENIDO Y CONTENEDORES (CARDS / HIGH-DENSITY WIREFRAME)
    ========================================================================== */
 .content-body {
-  padding: 18px 20px;
+  padding: clamp(14px, 1.8vw, 24px);
   flex: 1;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .wireframe-card, .card {
@@ -530,9 +533,9 @@ body {
 }
 
 /* TARJETAS MÉTRICAS (KPIs) */
-.metrics-grid {
+.metrics-grid, .grid-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -543,11 +546,33 @@ body {
   border-radius: var(--radius-md);
   padding: 12px 14px;
   box-shadow: var(--shadow-xs);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  border-top: 2.5px solid var(--border-medium);
+}
+
+.metric-card--success {
+  border-top-color: var(--color-success);
+}
+
+.metric-card--warning {
+  border-top-color: var(--color-warning);
+}
+
+.metric-card--danger {
+  border-top-color: var(--color-danger);
+}
+
+.metric-card--info {
+  border-top-color: var(--color-info);
+}
+
+.metric-card--neutral {
+  border-top-color: var(--border-medium);
 }
 
 .metric-card:hover {
   border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
 }
 
 .metric-card__header {
@@ -638,21 +663,23 @@ body {
 /* ==========================================================================
    TABLAS DE DATOS CONTABLES (HIGH DENSITY TABULAR)
    ========================================================================== */
-.table-container {
+.table-container, .table-responsive {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
   box-shadow: var(--shadow-xs);
 }
 
-.data-table {
+.table, .data-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
 
-.data-table th {
+.table th, .data-table th {
   background-color: var(--bg-subtle);
   padding: 8px 12px;
   font-size: 10.5px;
@@ -664,7 +691,7 @@ body {
   white-space: nowrap;
 }
 
-.data-table td {
+.table td, .data-table td {
   padding: 8px 12px;
   font-size: 12px;
   color: var(--text-main);
@@ -672,24 +699,24 @@ body {
   vertical-align: middle;
 }
 
-.data-table tr:last-child td {
+.table tr:last-child td, .data-table tr:last-child td {
   border-bottom: none;
 }
 
-.data-table tbody tr:hover {
+.table tbody tr:hover, .data-table tbody tr:hover {
   background-color: var(--bg-subtle);
 }
 
-.data-table .mono {
+.table .mono, .data-table .mono {
   font-family: var(--font-mono);
   font-size: 12px;
 }
 
-.data-table .text-right {
+.table .text-right, .data-table .text-right {
   text-align: right;
 }
 
-.data-table .text-center {
+.table .text-center, .data-table .text-center {
   text-align: center;
 }
 
@@ -773,32 +800,32 @@ body {
 }
 
 .badge--success {
-  background: #F8FAFC;
-  border-color: #94A3B8;
-  color: #0F172A;
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-dark);
 }
 
 .badge--warning {
-  background: #F8FAFC;
-  border-color: #94A3B8;
-  color: #334155;
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-dark);
 }
 
 .badge--danger {
-  background: #F8FAFC;
-  border-color: #64748B;
-  color: #0F172A;
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-dark);
 }
 
 .badge--info {
-  background: #F1F5F9;
-  border-color: #CBD5E1;
-  color: #1E293B;
+  background: var(--color-info-bg);
+  border-color: var(--color-info-border);
+  color: var(--color-info-dark);
 }
 
 .badge--neutral {
-  background: var(--bg-subtle);
-  border-color: var(--border-light);
+  background: var(--bg-muted);
+  border-color: var(--border-medium);
   color: var(--text-muted);
 }
 
@@ -964,3 +991,215 @@ body {
   background-color: var(--bg-subtle);
   color: var(--text-main);
 }
+
+.callout--success {
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-dark);
+}
+
+.callout--danger {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-dark);
+}
+
+.callout--warning {
+  background-color: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-dark);
+}
+
+.callout--info {
+  background-color: var(--color-info-bg);
+  border-color: var(--color-info-border);
+  color: var(--color-info-dark);
+}
+
+/* ==========================================================================
+   ADAPTABILIDAD RESPONSIVA PARA TIPOS DE PANTALLA DE PC
+   Soporte: Laptops 1366x768 / 1440x900, Desktops Full HD 1080p, 2K / 4K / Ultrawide,
+   y Ventanas en Pantalla Dividida (Split Screen / 900px - 1200px)
+   ========================================================================== */
+
+/* 1. Normalización de scroll y contenedores fluidos */
+.table-responsive,
+[style*="overflowX: 'auto'"],
+[style*="overflow-x: auto"] {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* 2. Pantallas Ultra-Wide y Grandes Monitores (> 1600px) */
+@media (min-width: 1600px) {
+  .content-body {
+    padding: 22px 28px;
+    max-width: 1800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .metrics-grid, .grid-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .modal-content {
+    max-width: 780px;
+  }
+}
+
+/* 3. Laptops Estándar y Medianas (1200px a 1440px, ej. 1366x768 con escala 100-125%) */
+@media (max-width: 1440px) {
+  .content-body {
+    padding: 14px 16px;
+  }
+
+  .metrics-grid, .grid-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .header {
+    padding: 0 16px;
+  }
+  
+  .header__title {
+    font-size: 14px;
+  }
+
+  .card-header, .wireframe-card__header {
+    padding: 10px 14px;
+  }
+
+  .card-body, .wireframe-card__body {
+    padding: 14px;
+  }
+}
+
+/* 4. Laptops Compactas y Pantalla Dividida en Windows (1000px a 1199px) */
+@media (max-width: 1199px) {
+  .content-body {
+    padding: 12px 14px;
+  }
+
+  .sidebar--expanded {
+    width: 230px;
+    min-width: 230px;
+  }
+
+  .header {
+    height: auto;
+    min-height: 52px;
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .header__left {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .metrics-grid, .grid-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .metric-card {
+    padding: 10px 12px;
+  }
+
+  .metric-card__value {
+    font-size: 16px;
+  }
+
+  .filter-bar, .toolbar {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .toolbar__search, .filter-bar__search {
+    min-width: 180px;
+    flex: 1 1 180px;
+  }
+
+  .form-row {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+  }
+}
+
+/* 5. Pantallas PC de tamaño reducido o ventana en cuarto de pantalla (768px a 999px) */
+@media (max-width: 999px) {
+  .app-layout {
+    position: relative;
+  }
+
+  .sidebar--expanded {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-content {
+    width: 96vw;
+    max-height: 94vh;
+  }
+}
+
+/* 6. Optimización para alturas reducidas (Laptops con pantallas 768px de alto o navegadores con muchas barras) */
+@media (max-height: 768px) {
+  .header {
+    height: 48px;
+    min-height: 48px;
+  }
+
+  .content-body {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .sidebar__header {
+    min-height: 50px;
+    padding: 10px 14px;
+  }
+
+  .sidebar__period-card {
+    margin: 6px 10px;
+    padding: 6px 10px;
+  }
+
+  .metric-card {
+    padding: 8px 12px;
+  }
+
+  .metric-card__value {
+    font-size: 16px;
+    margin-bottom: 0;
+  }
+
+  .modal-header {
+    padding: 10px 16px;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+    max-height: calc(100vh - 120px);
+  }
+
+  .modal-footer {
+    padding: 10px 16px;
+  }
+}
+

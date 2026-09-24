@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAccounting } from '../context/AccountingContext';
-import { Building2, Calendar, ShieldCheck, ArrowLeft, Terminal } from 'lucide-react';
+import { Building2, Calendar, ArrowLeft, Terminal } from 'lucide-react';
 
 export const Header = ({ title }) => {
   const { empresaActiva, periodoActivo, estadoPeriodo, sesionUsuario, salirDeEmpresa } = useAccounting();
@@ -44,37 +44,24 @@ export const Header = ({ title }) => {
         </div>
       </div>
 
-      <div className="header__right" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#64748B' }} className="mono">
+      <div className="header__right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div 
+          className="mono header__date-badge" 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px', 
+            fontSize: '11.5px', 
+            color: '#64748B',
+            background: 'var(--bg-subtle)',
+            padding: '4px 8px',
+            borderRadius: 'var(--radius-xs)',
+            border: '1px solid var(--border-light)'
+          }}
+          title="Fecha del sistema"
+        >
           <Calendar size={13} />
           <span>{new Date().toISOString().split('T')[0]}</span>
-        </div>
-        <div style={{ width: '1px', height: '16px', backgroundColor: '#E2E8F0' }}></div>
-        <div className="header__operator" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '4px',
-            backgroundColor: '#0F172A',
-            border: '1px solid #1E293B',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#FFFFFF',
-            fontWeight: '700',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px'
-          }}>
-            {sesionUsuario?.nombre?.substring(0, 2).toUpperCase() || 'AD'}
-          </div>
-          <div>
-            <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#0F172A', lineHeight: '1.2' }}>
-              {sesionUsuario?.nombre || 'Administrador'}
-            </div>
-            <div style={{ fontSize: '10px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '3px' }} className="mono">
-              <ShieldCheck size={10} /> ROL: {sesionUsuario?.rol?.toUpperCase() || 'SUPERVISOR'}
-            </div>
-          </div>
         </div>
       </div>
     </header>

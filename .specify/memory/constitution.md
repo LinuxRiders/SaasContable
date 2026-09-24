@@ -1,16 +1,23 @@
 <!--
 Sync Impact Report
-- Versión: (plantilla sin versionar) → 1.0.0
-- Principios: los 5 marcadores de la plantilla se reemplazan por 7 principios (I–VII)
-- Secciones añadidas: Alcance y Restricciones Técnicas; Flujo de Desarrollo y Quality Gates
+- Versión: 1.0.0 → 1.1.0 (MINOR: guía ampliada materialmente, sin redefinir principios)
+- Motivo: SDD v3.0 incorpora el modelo contable real y el agnosticismo jurisdiccional (RD-14 a RD-18, RF-13 a RF-20)
+- Principios modificados:
+  - Preámbulo: el núcleo es agnóstico por jurisdicción; Perú es el primer Paquete de Jurisdicción
+  - II: RD-04 usa "identificador fiscal del emisor" (antes "RUC emisor"); se añaden RD-14 a RD-18
+  - III: prohibición de reglas de país en el núcleo; extractores de documentos no estructurados en el registro
+  - V: pruebas mínimas ampliadas y conjunto de documentos de prueba multiformato
+- Secciones añadidas: ninguna
 - Secciones eliminadas: ninguna
+- Plantillas: plan-template.md sin cambios (su Constitution Check referencia I–VII, que se mantienen)
 - TODO diferidos: ninguno
 -->
 
 # ContableOS (SaasContable) Constitution
 
-Prototipo front-end de un sistema contable SaaS (Perú, PCGE, IGV) que simula un backend en el
-navegador. Esta constitución rige todo el código nuevo, en especial el Subsistema de Ingestión,
+Prototipo front-end de un sistema contable SaaS que simula un backend en el navegador. El núcleo
+es agnóstico por jurisdicción; Perú (PCGE, IGV, SUNAT) es el primer Paquete de Jurisdicción
+(SDD §21) y el único que se siembra en el prototipo. Esta constitución rige todo el código nuevo, en especial el Subsistema de Ingestión,
 Traducción y Asentamiento definido en `specs/SDD-ACL-Translation-Engine.md` (el "SDD").
 
 ## Core Principles
@@ -37,10 +44,13 @@ reescribir la UI.
 
 - Las reglas de dominio del SDD MUST implementarse de verdad y NUNCA ser burladas por la UI:
   RD-01 (payload raw append-only), RD-03 (Σ Débitos = Σ Créditos), RD-04 (idempotencia por hash
-  `tenantId + RUC emisor + tipo + número + fecha`), RD-05 (Maker ≠ Checker), RD-07/RD-11
+  `tenantId + identificador fiscal del emisor + tipo + número + fecha`), RD-05 (Maker ≠ Checker), RD-07/RD-11
   (POSTED inmutable; corrección solo por asiento inverso vinculado), RD-08 (aislamiento por
   tenant), RD-09 (redondeo una sola vez por línea; tasa provisional impide STP), RD-10
-  (plantillas versionadas inmutables una vez usadas) y RD-12 (solo periodos abiertos).
+  (plantillas versionadas inmutables una vez usadas), RD-12 (solo periodos abiertos), RD-14
+  (sin reglas de país en el núcleo), RD-15 (conformidad con el esquema del tipo de documento),
+  RD-16 (clasificación y selección de plantilla deterministas), RD-17 (imputación a cuentas de
+  detalle válidas) y RD-18 (vigencia por fecha del documento).
 - La máquina de estados de `JournalEntry` MUST seguir el SDD §10.2 (DRAFT, PENDING_INPUT,
   PENDING_APPROVAL, POSTED, POSTED_PENDING_PUBLISH, REJECTED, CANCELLED); toda transición no
   definida MUST ser rechazada. No existe el estado `REVERSED`.
@@ -63,8 +73,12 @@ infraestructura solo necesita ser creíble.
   reloj y generador de IDs).
 - Los parsers (UBL XML, JSON de API, etc.) MUST producir un `CanonicalDocument`; el motor de
   traducción y todo lo posterior MUST depender solo del modelo canónico (RD-02).
-- Parsers y plantillas se registran en un registro (Strategy); agregar un formato o una
-  plantilla nueva MUST NOT requerir modificar el motor de traducción (OCP).
+- Parsers, extractores (PDF, imagen) y plantillas se registran en un registro (Strategy); agregar
+  un formato o una plantilla nueva MUST NOT requerir modificar el motor de traducción (OCP).
+- El núcleo MUST NOT contener tipos de documento, impuestos, tasas, identificadores fiscales,
+  códigos de cuenta ni libros legales de un país. Todo eso vive en datos: el Paquete de
+  Jurisdicción (`src/data/`) y el mapa de cuentas del tenant. Las plantillas declaran todas sus
+  líneas; el evaluador no infiere lados ni cuentas por "compra" o "venta".
 - Los modelos del SDD §13 (`CanonicalDocument`, `JournalEntry`, `EntryLine`, `ASTTemplate`,
   etc.) MUST documentarse con `@typedef` JSDoc y reutilizar sus nombres de campo.
 
@@ -91,8 +105,14 @@ cambiando de usuario en vivo.
   unitarias, como mínimo: balance RD-03, hash de idempotencia RD-04, transiciones de estado,
   SoD RD-05, reversión RD-11, periodo cerrado RD-12, evaluación AST, decisión DoA y redondeo
   FX RD-09.
-- Cada plantilla AST semilla MUST tener al menos un caso de prueba con entrada y asiento
+- Además: validación de esquema por tipo de documento (RD-15), clasificación y selección de
+  plantilla (RD-16), resolución de roles de cuenta (RD-17), vigencia de tasas (RD-18) y
+  lenguaje de expresiones.
+- Cada plantilla semilla MUST tener al menos un caso de prueba con entrada y asiento
   esperado (RNF-11).
+- La ingestión MUST probarse con un conjunto de documentos ficticios multiformato (XML, JSON,
+  CSV, PDF, imágenes) con resultado esperado (SDD §20.9); la extracción de PDF e imágenes se
+  simula de forma determinista.
 - Componentes y vistas de React no requieren pruebas automatizadas; se validan manualmente con
   los escenarios demo de cada spec.
 - No se exige TDD estricto, pero ningún cambio de dominio se integra con pruebas en rojo.
@@ -165,4 +185,4 @@ en la contabilidad ya existente.
   principios I, II y VI.
 - Revisión de cumplimiento: al cerrar cada feature y antes de fusionar a `prototipo`.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-21
+**Version**: 1.1.0 | **Ratified**: 2026-09-21 | **Last Amended**: 2026-09-22

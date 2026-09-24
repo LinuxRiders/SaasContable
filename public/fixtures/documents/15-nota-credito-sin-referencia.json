@@ -1,0 +1,63 @@
+{
+  "schema": "contableos.document.v1",
+  "jurisdiction": "PE",
+  "documentType": "CREDIT_NOTE",
+  "series": "FC01",
+  "number": "12",
+  "issueDate": "2026-09-21",
+  "dueDate": null,
+  "currency": "PEN",
+  "parties": [
+    {
+      "role": "ISSUER",
+      "fiscalIdType": "RUC",
+      "fiscalId": "20100000009",
+      "name": "DISTRIBUIDORA ANDINA DEMO S.A.C.",
+      "countryCode": "PE"
+    },
+    {
+      "role": "RECEIVER",
+      "tenantId": "01",
+      "fiscalIdType": "RUC",
+      "fiscalId": "20450656934",
+      "name": "PACHATUSANTREK SOCIEDAD ANÓNIMA CERRADA",
+      "countryCode": "PE"
+    }
+  ],
+  "fields": {
+    "creditNoteReason": "09"
+  },
+  "lines": [
+    {
+      "lineNo": 1,
+      "description": "Descuento por pronto pago",
+      "amountMinor": 5000,
+      "taxes": [
+        {
+          "taxCode": "VAT",
+          "baseMinor": 5000,
+          "rateBp": 1800,
+          "amountMinor": 900
+        }
+      ],
+      "fields": {}
+    }
+  ],
+  "taxes": [
+    {
+      "taxCode": "VAT",
+      "baseMinor": 5000,
+      "rateBp": 1800,
+      "amountMinor": 900
+    }
+  ],
+  "withholdings": [],
+  "references": [],
+  "totals": {
+    "netMinor": 5000,
+    "taxMinor": 900,
+    "withheldMinor": 0,
+    "totalMinor": 5900,
+    "payableMinor": 5900
+  }
+}
